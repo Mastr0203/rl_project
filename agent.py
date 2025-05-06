@@ -1,16 +1,17 @@
 import numpy as np
 import torch
-import torch.nn.functional as F
+import torch.nn.functional as F               # <‑‑ import usato solo nel critic loss
 from torch.distributions import Normal
 
 
 def discount_rewards(r, gamma):
     discounted_r = torch.zeros_like(r)
     running_add = 0
-    for t in reversed(range(0, r.size(-1))):
+    for t in reversed(range(r.size(-1))):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
     return discounted_r
+
 
 class Critic(torch.nn.Module):
     def __init__(self, state_space, action_space):
@@ -19,34 +20,24 @@ class Critic(torch.nn.Module):
         self.action_space = action_space
         self.hidden = 64
         self.tanh = torch.nn.Tanh()
-        """
-            Critic network
-        """
+
         self.fc1_critic = torch.nn.Linear(state_space + action_space, self.hidden)
         self.fc2_critic = torch.nn.Linear(self.hidden, self.hidden)
         self.fc3_critic_mean = torch.nn.Linear(self.hidden, 1)
-
         self.init_weights()
 
     def forward(self, state, action):
-        """
-            Critic
-        """
-        # TASK 3: forward in the critic network
-
-        x_critic = torch.cat([state, action], dim = -1)
-        x_critic = self.tanh(self.fc1_critic(x_critic))
-        x_critic = self.tanh(self.fc2_critic(x_critic))
-        action_state_value = self.fc3_critic_mean(x_critic)
-
-        return action_state_value
-
+        x = torch.cat([state, action], dim=-1)
+        x = self.tanh(self.fc1_critic(x))
+        x = self.tanh(self.fc2_critic(x))
+        return self.fc3_critic_mean(x)
 
     def init_weights(self):
         for m in self.modules():
-            if type(m) is torch.nn.Linear:
+            if isinstance(m, torch.nn.Linear):
                 torch.nn.init.normal_(m.weight)
                 torch.nn.init.zeros_(m.bias)
+
 
 class Policy(torch.nn.Module):
     def __init__(self, state_space, action_space):
@@ -56,49 +47,39 @@ class Policy(torch.nn.Module):
         self.hidden = 64
         self.tanh = torch.nn.Tanh()
 
-        """
-            Actor network
-        """
         self.fc1_actor = torch.nn.Linear(state_space, self.hidden)
         self.fc2_actor = torch.nn.Linear(self.hidden, self.hidden)
         self.fc3_actor_mean = torch.nn.Linear(self.hidden, action_space)
-        
-        # Learned standard deviation for exploration at training time 
+
         self.sigma_activation = F.softplus
         init_sigma = 0.5
         self.sigma = torch.nn.Parameter(torch.zeros(self.action_space)+init_sigma)
-
         self.init_weights()
-
 
     def init_weights(self):
         for m in self.modules():
-            if type(m) is torch.nn.Linear:
+            if isinstance(m, torch.nn.Linear):
                 torch.nn.init.normal_(m.weight)
                 torch.nn.init.zeros_(m.bias)
 
-
     def forward(self, x):
-        """
-            Actor
-        """
-        x_actor = self.tanh(self.fc1_actor(x))
-        x_actor = self.tanh(self.fc2_actor(x_actor))
-        action_mean = self.fc3_actor_mean(x_actor)
+        x = self.tanh(self.fc1_actor(x))
+        x = self.tanh(self.fc2_actor(x))
+        action_mean = self.fc3_actor_mean(x)
 
         sigma = self.sigma_activation(self.sigma)
-        normal_dist = Normal(action_mean, sigma)
-
-        return normal_dist
+        return Normal(action_mean, sigma)
 
 
 class Agent(object):
-    def __init__(self, policy, critic = None, device='cpu'):
+    def __init__(self, policy, critic=None, device='cpu'):
         self.train_device = device
         self.policy = policy.to(self.train_device)
-        self.critic = critic.to(self.train_device) if critic != None else critic
-        self.optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
-        self.optimizer_critic = torch.optim.Adam(critic.parameters(), lr=1e-3) if critic is not None else None
+        self.critic = critic.to(self.train_device) if critic is not None else None
+
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
+        self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=1e-3)
+                                 if self.critic is not None else None)
 
         self.gamma = 0.99
         self.states = []
@@ -107,85 +88,82 @@ class Agent(object):
         self.rewards = []
         self.done = []
 
+    # -------------------------------------------------------------- #
+    # 1.  PICK ACTION                                                #
+    # -------------------------------------------------------------- #
+    def get_action(self, state, evaluation=False):
+        x = torch.from_numpy(state).float().to(self.train_device)
+        dist = self.policy(x)
 
+        if evaluation:
+            return dist.mean.detach().cpu().numpy(), None
+
+        action = dist.sample()
+        log_prob = dist.log_prob(action).sum()
+
+        # -------- PATCH: detach prima di numpy() --------
+        return action.detach().cpu().numpy(), log_prob
+
+    # -------------------------------------------------------------- #
+    # 2.  STORE STEP                                                 #
+    # -------------------------------------------------------------- #
+    def store_outcome(self, state, next_state, log_prob, reward, done):
+        self.states.append(torch.from_numpy(state).float())
+        self.next_states.append(torch.from_numpy(next_state).float())
+        self.action_log_probs.append(log_prob)
+        self.rewards.append(torch.tensor([reward], dtype=torch.float32))
+        self.done.append(done)
+
+    # -------------------------------------------------------------- #
+    # 3.  UPDATE                                                     #
+    # -------------------------------------------------------------- #
     def update_policy(self, model):
-        action_log_probs = torch.stack(self.action_log_probs, dim=0).to(self.train_device).squeeze(-1)
-        states = torch.stack(self.states, dim=0).to(self.train_device).squeeze(-1)
-        next_states = torch.stack(self.next_states, dim=0).to(self.train_device).squeeze(-1)
-        rewards = torch.stack(self.rewards, dim=0).to(self.train_device).squeeze(-1)
-        done = torch.Tensor(self.done).to(self.train_device)
+        log_probs = torch.stack(self.action_log_probs).to(self.train_device).squeeze(-1)
+        states = torch.stack(self.states).to(self.train_device)
+        next_states = torch.stack(self.next_states).to(self.train_device)
+        rewards = torch.stack(self.rewards).to(self.train_device).squeeze(-1)
+        done = torch.tensor(self.done, dtype=torch.float32, device=self.train_device)
 
-        self.states, self.next_states, self.action_log_probs, self.rewards, self.done = [], [], [], [], []
+        # svuota buffer
+        self.states, self.next_states = [], []
+        self.action_log_probs, self.rewards, self.done = [], [], []
 
-        #
-        # TASK 2:
-        #   - compute discounted returns
-        #   - compute policy gradient loss function given actions and returns
-        #   - compute gradients and step the optimizer
-        # TASK 3:
-        #   - compute boostrapped discounted return estimates
-        #   - compute advantage terms
-        #   - compute actor loss and critic loss
-        #   - compute gradients and step the optimizer
-        #
-
+        # ---------------- REINFORCE ---------------- #
         if model == "REINFORCE":
-            disc_rewards = discount_rewards(rewards, self.gamma)
-            actor_loss = -torch.sum(action_log_probs * disc_rewards)
+            disc_returns = discount_rewards(rewards, self.gamma)
+            actor_loss = -(log_probs * disc_returns).sum()
+
             self.optimizer.zero_grad()
             actor_loss.backward()
             self.optimizer.step()
-
             return actor_loss
 
+        # --------------- ACTOR‑CRITIC -------------- #
         elif model == "ActorCritic":
-            actions = self.policy(states).mean
-            q_vals = self.critic(states, actions)
-
+            # --- 1) Critic update (prima) -----------
             with torch.no_grad():
-                next_actions = self.policy(next_states).mean
-                q_next = self.critic(next_states, next_actions)
-                delta = rewards + self.gamma * q_next * (1 - done) - q_vals
+                next_act = self.policy(next_states).mean       # grad OFF
+                target_q = rewards + self.gamma * \
+                           self.critic(next_states, next_act) * (1 - done)
 
-            actions_pred = self.policy(states).mean
-            q_vals_current = self.critic(states, actions_pred)
-            #target = rewards + self.gamma * q_next * (1 - done)
-            critic_loss = torch.nn.functional.mse_loss(q_vals_current, q_next + delta)
+            current_act = self.policy(states).mean.detach()    # grad OFF verso policy
+            q_vals = self.critic(states, current_act)
 
-            actor_loss = -torch.sum(action_log_probs * delta)
-
-            self.optimizer.zero_grad()
-            actor_loss.backward()
-            self.optimizer.step()
+            critic_loss = F.mse_loss(q_vals, target_q)
 
             self.optimizer_critic.zero_grad()
             critic_loss.backward()
             self.optimizer_critic.step()
 
+            # --- 2) Actor update (dopo) --------------
+            advantages = (target_q - q_vals).detach()
+            actor_loss = -(log_probs * advantages).sum()
+
+            self.optimizer.zero_grad()
+            actor_loss.backward()
+            self.optimizer.step()
+
             return actor_loss + critic_loss
 
-
-    def get_action(self, state, evaluation=False):
-        """ state -> action (3-d), action_log_densities """
-        x = torch.from_numpy(state).float().to(self.train_device)
-
-        normal_dist = self.policy(x)
-
-        if evaluation:  # Return mean
-            return normal_dist.mean, None
-
-        else:   # Sample from the distribution
-            action = normal_dist.sample()
-
-            # Compute Log probability of the action [ log(p(a[0] AND a[1] AND a[2])) = log(p(a[0])*p(a[1])*p(a[2])) = log(p(a[0])) + log(p(a[1])) + log(p(a[2])) ]
-            action_log_prob = normal_dist.log_prob(action).sum()
-
-            return action, action_log_prob
-
-
-    def store_outcome(self, state, next_state, action_log_prob, reward, done):
-        self.states.append(torch.from_numpy(state).float())
-        self.next_states.append(torch.from_numpy(next_state).float())
-        self.action_log_probs.append(action_log_prob)
-        self.rewards.append(torch.Tensor([reward]))
-        self.done.append(done)
+        else:
+            raise ValueError(f"Unknown algorithm '{model}'")
