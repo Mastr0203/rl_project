@@ -15,7 +15,7 @@ import gymnasium as gym
 
 # registra gli env CustomHopper-* con le chiamate register()
 from env.custom_hopper import *  # noqa: F401,F403
-from agent import Agent, Policy
+from agent import Agent, Policy,Critic
 
 
 # --------------------------------------------------------------------- #
@@ -54,8 +54,8 @@ def main() -> None:
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
 
-    policy = Policy(obs_dim, act_dim)
-    agent = Agent(policy, device=args.device)
+    #policy = Policy(obs_dim, act_dim)
+    #agent = Agent(policy, device=args.device)
 
     def REINFORCE():
         observation_space_dim = env.observation_space.shape[-1]
@@ -78,34 +78,26 @@ def main() -> None:
                 agent.store_outcome(prev_obs, obs, log_prob, reward, done)
                 ep_return += reward
 
-                loss = agent.update_policy(args.algorithm)
+            loss = agent.update_policy(args.algorithm)              #Va fuori perchè deve aggiornare ad ogni episodio
 
-                if args.render:
-                    env.render()
+            if args.render:
+                env.render()
 
             if (episode + 1) % args.print_every == 0:
-                print(f"[Episode {episode+1}] return = {ep_return:.2f}")
+                print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
 
         # salva i pesi a fine training
         torch.save(agent.policy.state_dict(), "model.mdl")
         env.close()
 
-    if args.algorithm == "REINFORCE":
-        REINFORCE()
-    # elif args.algorithm == "ActorCritic":
-    #    ActorCritic()
-
-    # -----------------------------------------------------------------
-    # TRAINING LOOP
-    # -----------------------------------------------------------------
-    """
-    def ActorCritic():
+    def ACTORCRITIC():
         observation_space_dim = env.observation_space.shape[-1]
         action_space_dim = env.action_space.shape[-1]
 
         policy = Policy(observation_space_dim, action_space_dim)
-        agent = Agent(policy, device=args.device)
         critic = Critic(observation_space_dim, action_space_dim)
+        agent = Agent(policy, device=args.device,critic=critic)
+        
         for episode in range(args.n_episodes):
             obs, _ = env.reset(seed=episode)
             terminated = truncated = False
@@ -121,20 +113,23 @@ def main() -> None:
                 agent.store_outcome(prev_obs, obs, log_prob, reward, done)
                 ep_return += reward
 
-                loss = agent.update_policy(args.algorithm)
+                loss = agent.update_policy(args.algorithm)      #Aggiorna ad ogni step
 
                 if args.render:
                     env.render()
 
             if (episode + 1) % args.print_every == 0:
-                print(f"[Episode {episode+1}] return = {ep_return:.2f}")
+                print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
 
         # salva i pesi a fine training
         torch.save(agent.policy.state_dict(), "model.mdl")
         env.close()
-"""
-        
     
+
+    if args.algorithm == "REINFORCE":
+        REINFORCE()
+    elif args.algorithm == "ActorCritic":
+        ACTORCRITIC()
 
 if __name__ == "__main__":
     main()

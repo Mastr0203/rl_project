@@ -1,149 +1,191 @@
-"""
-agent.py
---------
-
-* Rimane indipendente da Gym ↔ Gymnasium: gli unici oggetti che riceve
-  sono `state` (np.ndarray), `reward` (float) e un flag `done`.
-* Non è quindi necessario alcun refactor strutturale per il passaggio
-  a Gymnasium + MuJoCo; aggiorniamo solo:
-    - import / commenti
-    - segnaposto chiari per i TASK 2 e 3
-"""
-
-from __future__ import annotations  # Permette di usare “tipi” come stringhe (es. List["Tensor"])
-                                    # anche prima che siano completamente definiti
-
-from typing import List
-
 import numpy as np
 import torch
 import torch.nn.functional as F
-from torch import Tensor
 from torch.distributions import Normal
 
 
-# --------------------------------------------------------------------- #
-# Utils                                                                 #
-# --------------------------------------------------------------------- #
-
-def discount_rewards(r: Tensor, gamma: float) -> Tensor:
-    """Return discounted cumulative rewards (G_t)."""
-    discounted_r = torch.zeros_like(r)  # Alloca un tensor vuoto e inizializza la somma cumulativa
-    running_add = 0.0
-    for t in reversed(range(r.size(0))):  # Cicla all’indietro nel tempo per accumulare reward scontati
+def discount_rewards(r, gamma):
+    discounted_r = torch.zeros_like(r)
+    running_add = 0
+    for t in reversed(range(0, r.size(-1))):
         running_add = running_add * gamma + r[t]
         discounted_r[t] = running_add
-    return discounted_r  # Ritorna il tensore dei return G_t per ogni timestep
+    return discounted_r
 
-# Il return G_t viene usato per pesare il gradiente log-probabilità
-# → Se G_t è alto → rinforza l’azione scelta
-# → Se G_t è basso → scoraggia quella scelta
+class Critic(torch.nn.Module):
+    def __init__(self, state_space, action_space):
+        super().__init__()
+        self.state_space = state_space
+        self.action_space = action_space
+        self.hidden = 64
+        self.tanh = torch.nn.Tanh()
+        """
+            Critic network
+        """
+        self.fc1_critic = torch.nn.Linear(state_space + action_space, self.hidden)
+        self.fc2_critic = torch.nn.Linear(self.hidden, self.hidden)
+        self.fc3_critic_mean = torch.nn.Linear(self.hidden, 1)
+
+        self.init_weights()
+
+    def forward(self, state, action):
+        """
+            Critic
+        """
+        # TASK 3: forward in the critic network
+
+        x_critic = torch.cat([state, action], dim = -1)
+        x_critic = self.tanh(self.fc1_critic(x_critic))
+        x_critic = self.tanh(self.fc2_critic(x_critic))
+        action_state_value = self.fc3_critic_mean(x_critic)
+
+        return action_state_value
 
 
-# --------------------------------------------------------------------- #
-# Policy network (actor + critic skeleton)                              #
-# --------------------------------------------------------------------- #
+    def init_weights(self):
+        for m in self.modules():
+            if type(m) is torch.nn.Linear:
+                torch.nn.init.normal_(m.weight)
+                torch.nn.init.zeros_(m.bias)
 
 class Policy(torch.nn.Module):
-    def __init__(self, state_dim: int, action_dim: int):
+    def __init__(self, state_space, action_space):
         super().__init__()
-
+        self.state_space = state_space
+        self.action_space = action_space
         self.hidden = 64
         self.tanh = torch.nn.Tanh()
 
-        # --- Actor ----------------------------------------------------- #
-        self.fc1_actor = torch.nn.Linear(state_dim, self.hidden)
+        """
+            Actor network
+        """
+        self.fc1_actor = torch.nn.Linear(state_space, self.hidden)
         self.fc2_actor = torch.nn.Linear(self.hidden, self.hidden)
-        self.fc3_actor_mean = torch.nn.Linear(self.hidden, action_dim)
-        self.sigma = torch.nn.Parameter(torch.full((action_dim,), 0.5))
+        self.fc3_actor_mean = torch.nn.Linear(self.hidden, action_space)
+        
+        # Learned standard deviation for exploration at training time 
         self.sigma_activation = F.softplus
+        init_sigma = 0.5
+        self.sigma = torch.nn.Parameter(torch.zeros(self.action_space)+init_sigma)
 
-        # --- Critic ----------------------------------------------------- #
-        self.fc1_critic = torch.nn.Linear(state_dim, self.hidden)
-        self.fc2_critic = torch.nn.Linear(self.hidden, self.hidden)
-        self.fc3_value = torch.nn.Linear(self.hidden, 1)
+        self.init_weights()
 
-        self._init_weights()
 
-    def _init_weights(self):
+    def init_weights(self):
         for m in self.modules():
-            if isinstance(m, torch.nn.Linear):
-                torch.nn.init.normal_(m.weight, mean=0.0, std=0.1)
+            if type(m) is torch.nn.Linear:
+                torch.nn.init.normal_(m.weight)
                 torch.nn.init.zeros_(m.bias)
 
-    def forward(self, x: Tensor) -> tuple[Normal, Tensor]:
-        # Actor
-        a = self.tanh(self.fc1_actor(x))
-        a = self.tanh(self.fc2_actor(a))
-        mean = self.fc3_actor_mean(a)
+
+    def forward(self, x):
+        """
+            Actor
+        """
+        x_actor = self.tanh(self.fc1_actor(x))
+        x_actor = self.tanh(self.fc2_actor(x_actor))
+        action_mean = self.fc3_actor_mean(x_actor)
+
         sigma = self.sigma_activation(self.sigma)
-        dist = Normal(mean, sigma)
+        normal_dist = Normal(action_mean, sigma)
 
-        # Critic
-        v = self.tanh(self.fc1_critic(x))
-        v = self.tanh(self.fc2_critic(v))
-        value = self.fc3_value(v).squeeze(-1)
-
-        return dist, value
+        return normal_dist
 
 
-class Agent:
-    def __init__(self, policy: Policy, device: str = "cpu"):
-        self.policy = policy.to(device)
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
-        self.device = device
+class Agent(object):
+    def __init__(self, policy, critic = None, device='cpu'):
+        self.train_device = device
+        self.policy = policy.to(self.train_device)
+        self.critic = critic.to(self.train_device) if critic != None else critic
+        self.optimizer = torch.optim.Adam(policy.parameters(), lr=1e-3)
+        self.optimizer_critic = torch.optim.Adam(critic.parameters(), lr=1e-3) if critic is not None else None
+
         self.gamma = 0.99
+        self.states = []
+        self.next_states = []
+        self.action_log_probs = []
+        self.rewards = []
+        self.done = []
 
-        self.states: List[Tensor] = []
-        self.action_log_probs: List[Tensor] = []
-        self.rewards: List[Tensor] = []
-        self.dones: List[bool] = []
 
-    def get_action(self, state: np.ndarray, evaluation: bool = False):
-        x = torch.from_numpy(state).float().to(self.device)
-        dist, _ = self.policy(x)
+    def update_policy(self, model):
+        action_log_probs = torch.stack(self.action_log_probs, dim=0).to(self.train_device).squeeze(-1)
+        states = torch.stack(self.states, dim=0).to(self.train_device).squeeze(-1)
+        next_states = torch.stack(self.next_states, dim=0).to(self.train_device).squeeze(-1)
+        rewards = torch.stack(self.rewards, dim=0).to(self.train_device).squeeze(-1)
+        done = torch.Tensor(self.done).to(self.train_device)
 
-        if evaluation:
-            return dist.mean.cpu().numpy(), None
-        else:
-            action = dist.sample()
-            log_prob = dist.log_prob(action).sum()
-            return action.cpu().numpy(), log_prob
+        self.states, self.next_states, self.action_log_probs, self.rewards, self.done = [], [], [], [], []
 
-    def store_outcome(self, state: np.ndarray, _: np.ndarray, log_prob: Tensor, reward: float, done: bool):
+        #
+        # TASK 2:
+        #   - compute discounted returns
+        #   - compute policy gradient loss function given actions and returns
+        #   - compute gradients and step the optimizer
+        # TASK 3:
+        #   - compute boostrapped discounted return estimates
+        #   - compute advantage terms
+        #   - compute actor loss and critic loss
+        #   - compute gradients and step the optimizer
+        #
+
+        if model == "REINFORCE":
+            disc_rewards = discount_rewards(rewards, self.gamma)
+            actor_loss = -torch.sum(action_log_probs * disc_rewards)
+            self.optimizer.zero_grad()
+            actor_loss.backward()
+            self.optimizer.step()
+
+            return actor_loss
+
+        elif model == "ActorCritic":
+            actions = self.policy(states).mean
+            q_vals = self.critic(states, actions)
+
+            with torch.no_grad():
+                next_actions = self.policy(next_states).mean
+                q_next = self.critic(next_states, next_actions)
+                delta = rewards + self.gamma * q_next * (1 - done) - q_vals
+
+            actions_pred = self.policy(states).mean
+            q_vals_current = self.critic(states, actions_pred)
+            #target = rewards + self.gamma * q_next * (1 - done)
+            critic_loss = torch.nn.functional.mse_loss(q_vals_current, q_next + delta)
+
+            actor_loss = -torch.sum(action_log_probs * delta)
+
+            self.optimizer.zero_grad()
+            actor_loss.backward()
+            self.optimizer.step()
+
+            self.optimizer_critic.zero_grad()
+            critic_loss.backward()
+            self.optimizer_critic.step()
+
+            return actor_loss + critic_loss
+
+
+    def get_action(self, state, evaluation=False):
+        """ state -> action (3-d), action_log_densities """
+        x = torch.from_numpy(state).float().to(self.train_device)
+
+        normal_dist = self.policy(x)
+
+        if evaluation:  # Return mean
+            return normal_dist.mean, None
+
+        else:   # Sample from the distribution
+            action = normal_dist.sample()
+
+            # Compute Log probability of the action [ log(p(a[0] AND a[1] AND a[2])) = log(p(a[0])*p(a[1])*p(a[2])) = log(p(a[0])) + log(p(a[1])) + log(p(a[2])) ]
+            action_log_prob = normal_dist.log_prob(action).sum()
+
+            return action, action_log_prob
+
+
+    def store_outcome(self, state, next_state, action_log_prob, reward, done):
         self.states.append(torch.from_numpy(state).float())
-        self.action_log_probs.append(log_prob)
-        self.rewards.append(torch.tensor([reward], dtype=torch.float32))
-        self.dones.append(done)
-
-    def update_policy(self, method: str = "REINFORCE") -> float:
-        log_probs = torch.stack(self.action_log_probs).to(self.device)
-        rewards = torch.stack(self.rewards).to(self.device).flatten()
-        states = torch.stack(self.states).to(self.device)
-
-        self.states.clear()
-        self.action_log_probs.clear()
-        self.rewards.clear()
-        self.dones.clear()
-
-        if method == "REINFORCE":
-            returns = discount_rewards(rewards, self.gamma)
-            loss = -torch.sum(log_probs * returns)
-
-        elif method == "ActorCritic":
-            _, values = self.policy(states)
-            returns = discount_rewards(rewards, self.gamma)
-            advantages = returns - values.detach()
-
-            loss_actor = -torch.sum(log_probs * advantages)
-            loss_critic = F.mse_loss(values, returns)
-            loss = loss_actor + loss_critic
-
-        else:
-            raise ValueError(f"Unknown method: {method}")
-
-        self.optimizer.zero_grad()
-        loss.backward()
-        self.optimizer.step()
-
-        return loss.item()
+        self.next_states.append(torch.from_numpy(next_state).float())
+        self.action_log_probs.append(action_log_prob)
+        self.rewards.append(torch.Tensor([reward]))
+        self.done.append(done)
