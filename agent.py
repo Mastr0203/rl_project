@@ -101,12 +101,12 @@ class Policy(torch.nn.Module):
 #   se lasciato None, si userà solo REINFORCE
 # - device='cpu': device su cui eseguire i calcoli PyTorch, può essere "cpu" oppure "cuda"
 class Agent(object):
-    def __init__(self, policy, critic=None, device='cpu'):
+    def __init__(self, policy, max_action, critic=None, device='cpu'):
         self.train_device = device
         self.policy = policy.to(self.train_device)  # Questo garantisce che i forward e backward
                                                     # avvengano tutti sullo stesso hardware
         self.critic = critic.to(self.train_device) if critic is not None else None
-
+        self.max_action = max_action # valore massimo dell'azione che l'agent può compiere
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
         # Crea un ottimizzatore Adam per i parametri della policy
         self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=1e-3)
@@ -136,11 +136,18 @@ class Agent(object):
         dist = self.policy(x)  # dist rappresenta la distribuzione di probabilità da cui campionare le azioni
 
         if evaluation:  # Non vogliamo esplorazione casuale, ma l’azione “più probabile”: la media
-            return dist.mean.detach().cpu().numpy(), None  # .detach() scollega il tensore dal grafo computazionale
+            action = torch.tanh(dist.mean) * self.max_action
+            return action.detach().cpu().numpy(), None  # .detach() scollega il tensore dal grafo computazionale
                                                            # (non servono gradienti)
 
-        action = dist.sample()  # Estrae un’azione casuale
-        log_prob = dist.log_prob(action).sum()  # Calcola log_pi(a|s) per la componente di policy gradient
+        pre_tanh_action = dist.sample()  # Estrae un’azione casuale
+        tanh_action = torch.tanh(pre_tanh_action) # Comprimi le azioni tra [-1, 1]
+        action = tanh_action * self.max_action # Adatta il range tra [-self.max_action, self.max_action]
+
+        # Compute log-prob with correction
+        log_prob = dist.log_prob(pre_tanh_action) # Le log probabilities devono essere calcolate dal sampling della normale
+        log_prob -= torch.log(1 - tanh_action.pow(2) + 1e-6) # Deriva dalla formula log p(a) = log p(u) - \sum_i log(1-tanh^2(ui)); epsilon = 1e-6 evita log(0)
+        log_prob = log_prob.sum(dim = -1, keepdim = True) # calcola la somma delle log probabilities
 
         # -------- PATCH: detach prima di numpy() --------
         return action.detach().cpu().numpy(), log_prob
@@ -230,3 +237,20 @@ class Agent(object):
 
         else:
             raise ValueError(f"Unknown algorithm '{model}'")
+        
+
+    
+
+    def sample_normal(self, state, reparameterize = True):
+        mu, sigma = self.forward(state)
+        probabilities = Normal(mu, sigma)
+
+        if reparameterize:
+            actions = probabilities.rsample()
+        else:
+            actions = probabilities.sample()
+        
+        action = torch.tanh(actions)*torch.tensor(self.max_action).to(self.device)
+        log_probs = probabilities.log_prob(actions)
+        log_probs -= torch.log(1-action.pow(2)+self.reparam_noise)
+        log_probs = log_probs.sum(1, keepdim = True)

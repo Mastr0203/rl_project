@@ -53,15 +53,11 @@ def main() -> None:
 
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
-
-    #policy = Policy(obs_dim, act_dim)
-    #agent = Agent(policy, device=args.device)
+    max_action = env.action_space.highs4
 
     def REINFORCE():
-        observation_space_dim = env.observation_space.shape[-1]
-        action_space_dim = env.action_space.shape[-1]
-        policy = Policy(observation_space_dim, action_space_dim)
-        agent = Agent(policy, device=args.device)
+        policy = Policy(obs_dim, act_dim)
+        agent = Agent(policy, device=args.device, max_action = max_action)
 
         for episode in range(args.n_episodes):
             obs, _ = env.reset(seed=episode)
@@ -91,12 +87,9 @@ def main() -> None:
         env.close()
 
     def ACTORCRITIC():
-        observation_space_dim = env.observation_space.shape[-1]
-        action_space_dim = env.action_space.shape[-1]
-
-        policy = Policy(observation_space_dim, action_space_dim)
-        critic = Critic(observation_space_dim, action_space_dim)
-        agent = Agent(policy, device=args.device,critic=critic)
+        policy = Policy(obs_dim, act_dim)
+        critic = Critic(obs_dim, act_dim)
+        agent = Agent(policy, device=args.device,critic=critic, max_action = max_action)
         
         for episode in range(args.n_episodes):
             obs, _ = env.reset(seed=episode)
