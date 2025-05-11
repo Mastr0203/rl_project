@@ -1,8 +1,8 @@
 """
 Sample script for training a control policy on CustomHopper using
-stable‑baselines3 (≥ 2.0, compatibile con Gymnasium).
+stable-baselines3 (≥ 2.0, compatibile con Gymnasium).
 
-Leggi la documentazione SB3 e implementa (TASK 4‑5) un training pipeline
+Leggi la documentazione SB3 e implementa (TASK 4-5) un training pipeline
 con PPO o SAC. Questo file si limita a creare l'ambiente e a stampare
 informazioni utili, lasciando i TODO dove richiesto.
 """
@@ -11,9 +11,13 @@ from __future__ import annotations
 
 import argparse
 import gymnasium as gym
-from stable_baselines3 import PPO, SAC
+from stable_baselines3 import PPO, SAC  # sono le classi di SB3 che incapsulano l’algoritmo (rete policy + ottimizzatori + loop di training)
 from stable_baselines3.common.callbacks import CheckpointCallback, EvalCallback
-from stable_baselines3.common.evaluation import evaluate_policy
+# CheckpointCallback salva periodicamente pesi e ottimizzatori allo stato corrente
+# EvalCallback esegue valutazioni regolari su un env di test e salva il “best model”
+from stable_baselines3.common.evaluation import evaluate_policy  # è una funzione helper che, dato un modello SB3
+                                                                 # addestrato, lo esegue per N episodi e restituisce
+                                                                 # media e deviazione delle ricompense
 
 # Import custom Hopper environments (register on import)
 from env.custom_hopper import *  # noqa: F401,F403
@@ -30,8 +34,8 @@ COMMON_HYPERS = {
 ALG_HYPERS = {
     "PPO": {
         "learning_rate": 3e-4,
-        "batch_size": 64,
-        "n_steps": 2048,
+        "batch_size": 64,  # suddivisione del batch in minibatch per più epoch
+        "n_steps": 2048,  # ogni quante interazioni con l’ambiente SB3 calcola un batch per il gradient-update
         "clip_range": 0.2,
         "ent_coef": 0.0,
     },
@@ -39,10 +43,10 @@ ALG_HYPERS = {
         "learning_rate": 3e-4,
         # SAC specific
         "batch_size": 256,
-        "train_freq": 1,
-        "learning_starts": 10000,
-        "buffer_size": 1000000,
-        "ent_coef": 'auto',
+        "train_freq": 1,  # ogni quante azioni campiona un gradient-step
+        "learning_starts": 10000,  # attendi tante azioni prima di iniziare ad allenare (riempimento buffer)
+        "buffer_size": 1000000,  # dimensione del replay buffer
+        "ent_coef": 'auto',  # SAC sceglie automaticamente il coefficiente di entropia, bilanciando esplorazione e sfruttamento
     }
 }
 
@@ -56,12 +60,32 @@ def make_env(domain: str) -> gym.Env:
 # -----------------------------
 # 3. Callbacks
 # -----------------------------
+"""La funzione create_callbacks(n_steps) ha lo scopo di generare e restituire due callback da passare al metodo
+    model.learn(), in modo da automatizzare:
+	1.	CheckpointCallback
+	    •	Cosa fa: salva periodicamente lo stato del modello (pesi, ottimizzatori, contatore di timesteps) su
+            disco.
+	    •	Perché è utile: se l'allenamento viene interrotto (per es. crash, timeout, riavvio), puoi ripartire
+            da un ultimo salvataggio anziché ricominciare da zero. Inoltre ti permette di conservare più snapshot
+            del modello lungo il training.
+	2.	EvalCallback
+	    •	Cosa fa: ogni tot passi di ambiente valuta il modello su un ambiente di test (qui CustomHopper-target-v0),
+            calcolando la ricompensa media su alcuni episodi.
+	    •	Perché è utile:
+	        •	Ti dà un feedback regolare sulle reali prestazioni di transfer (sim-to-sim) man mano che l'agente
+                impara.
+	        •	Se ottiene un nuovo record di ricompensa media, salva quel “best model” in una cartella dedicata.
+	        •	Registra metriche (reward, std, …) in un file di log per poterle visualizzare con TensorBoard o
+                altri strumenti."""
 def create_callbacks(n_steps: int):
     checkpoint_callback = CheckpointCallback(
         save_freq=100_000 // n_steps,
         save_path="./checkpoints/",
         name_prefix="rl_hopper"
     )
+    # •	CheckpointCallback:
+	#   •	Ogni save_freq batch chiama model.save(…).
+	#   •	Dietro le quinte serializza: pesi reti, stato ottimizzatore, numero di passi.
     eval_env = make_env("target")
     eval_callback = EvalCallback(
         eval_env,
@@ -71,6 +95,9 @@ def create_callbacks(n_steps: int):
         deterministic=True,
         render=False
     )
+    # •	EvalCallback:
+	#   •	Ogni eval_freq batch esegue evaluate_policy(model, eval_env, …) internamente.
+	#   •	Se la ricompensa media supera il best reward precedente, salva automaticamente con model.save(best_model_path)
     return [checkpoint_callback, eval_callback]
 
 # -----------------------------
@@ -92,7 +119,7 @@ def main():
     # instantiate model
     if algo == "PPO":
         model = PPO(
-            "MlpPolicy",
+            "MlpPolicy",  # policy network pre-definita, una MLP a 2 layer con attivazione Tanh
             train_env,
             learning_rate=hypers['learning_rate'],
             gamma=hypers['gamma'],
@@ -121,16 +148,22 @@ def main():
         callbacks = create_callbacks(hypers.get('n_steps', 1))
 
     # train
+    # 1. Ciclo principale:
+	#   • Raccoglie n_steps interazioni da train_env.
+	#   • Calcola advantage / target critic.
+	#   • Esegue n_epochs di gradient descent sui minibatch interni (solo PPO).
+	#   • Chiede ai callback di checkpoint/eval di agire.
+	# 2.	Continua fino a total_timesteps.
     model.learn(
         total_timesteps=hypers['total_timesteps'],
         callback=callbacks
     )
 
     # save final
-    model.save(f"{algo.lower()}_custom_hopper_final")
+    model.save(f"{algo.lower()}_custom_hopper_final") # salva pesi finali, ottimizzatori, parametri
 
     # final eval
-    mean_reward, std_reward = evaluate_policy(
+    mean_reward, std_reward = evaluate_policy(  # Calcola media e deviazione della somma di ricompense per episodio
         model,
         eval_env,
         n_eval_episodes=10,
