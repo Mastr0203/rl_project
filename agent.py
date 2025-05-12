@@ -14,11 +14,11 @@ def discount_rewards(r, gamma):  # r: tensor 1-D di ricompense raccolte in un ep
 
 
 class Critic(torch.nn.Module):
-    def __init__(self, state_space, action_space):
+    def __init__(self, state_space, action_space, hidden=64):
         super().__init__()
         self.state_space = state_space
         self.action_space = action_space
-        self.hidden = 64
+        self.hidden = hidden
         self.tanh = torch.nn.Tanh()
 
         self.fc1_critic = torch.nn.Linear(state_space + action_space, self.hidden)
@@ -53,11 +53,11 @@ class Critic(torch.nn.Module):
 # Output: una distribuzione da cui l’Agent può campionare azioni esplorative e calcolare
 #         log-prob per la loss del policy gradient.
 class Policy(torch.nn.Module):
-    def __init__(self, state_space, action_space):
+    def __init__(self, state_space, action_space, hidden=64):
         super().__init__()
         self.state_space = state_space
         self.action_space = action_space
-        self.hidden = 64
+        self.hidden = hidden
         self.tanh = torch.nn.Tanh()
 
         self.fc1_actor = torch.nn.Linear(state_space, self.hidden)
@@ -101,20 +101,24 @@ class Policy(torch.nn.Module):
 #   se lasciato None, si userà solo REINFORCE
 # - device='cpu': device su cui eseguire i calcoli PyTorch, può essere "cpu" oppure "cuda"
 class Agent(object):
-    def __init__(self, policy, max_action, critic=None, device='cpu'):
+    def __init__(self, policy: Policy, max_action, critic: Critic | None = None, device: str = 'cpu',
+        gamma: float = 0.99,
+        lr_policy: float = 1e-3,
+        lr_critic: float = 1e-3,
+    ):
         self.train_device = device
         self.policy = policy.to(self.train_device)  # Questo garantisce che i forward e backward
                                                     # avvengano tutti sullo stesso hardware
         self.critic = critic.to(self.train_device) if critic is not None else None
         self.max_action = max_action # valore massimo dell'azione che l'agent può compiere
-        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=1e-3)
+        self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr_policy)
         # Crea un ottimizzatore Adam per i parametri della policy
-        self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=1e-3)
+        self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=lr_critic)
                                  if self.critic is not None else None)  # Se esiste un critic, ne crea un
                                                                         # ottimizzatore Adam analogo
         
         # Buffer per raccogliere, passo dopo passo, all’interno di un episodio:
-        self.gamma = 0.99
+        self.gamma = gamma
         self.states = []  # •	states: stati s_t
         self.next_states = []  # •	next_states: stati successivi s_{t+1}
         self.action_log_probs = []  # •	action_log_probs: i logaritmi delle probabilità delle azioni campionate
@@ -209,10 +213,13 @@ class Agent(object):
             # --- 1) Critic update (prima) -----------
             with torch.no_grad():  # disabilita il tracciamento dei gradienti perché non vogliamo aggiornare
                                    # né la policy né il critic usando il termine futuro come nodo di back-prop
+                # porta rewards e done a shape [T,1] così da farli combaciare con critic output
+                r_col = rewards.unsqueeze(-1)      # [T] -> [T,1]
+                done_col = done.unsqueeze(-1)      # [T] -> [T,1]
                 next_act = self.policy(next_states).mean
                 # qui viene chiamata critic.forward con self.critic() per calcolare il target:
-                target_q = rewards + self.gamma * \
-                           self.critic(next_states, next_act) * (1 - done)
+                target_q = r_col + self.gamma * \
+                           self.critic(next_states, next_act) * (1 - done_col)
                 # Il fattore (1 - done) assicura che, se l’episodio è terminato, non si faccia bootstrapping oltre
 
             current_act = self.policy(states).mean.detach()    # grad OFF verso policy

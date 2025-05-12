@@ -53,7 +53,7 @@ def main() -> None:
 
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
-    max_action = env.action_space.highs4
+    max_action = env.action_space.high
 
     def REINFORCE():
         policy = Policy(obs_dim, act_dim)
