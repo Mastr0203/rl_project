@@ -4,7 +4,7 @@ import torch.nn.functional as F               # <‑‑ import usato solo nel cr
 from torch.distributions import Normal
 
 # Scopo: calcolare i ritorni scontati su tutta la traiettoria
-def discount_rewards(r, gamma):  # r: tensor 1-D di ricompense raccolte in un episodio
+def discount_rewards(r, gamma = 0.99):  # r: tensor 1-D di ricompense raccolte in un episodio
     discounted_r = torch.zeros_like(r)
     running_add = 0
     for t in reversed(range(r.size(-1))):
@@ -42,7 +42,7 @@ class Critic(torch.nn.Module):
         for m in self.modules():
             if isinstance(m, torch.nn.Linear):  # il loop serve a individuare ogni torch.nn.Linear presente
                                                 # nella rete e a inizializzarne i pesi e i bias secondo lo schema
-                torch.nn.init.normal_(m.weight)
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.1)
                 torch.nn.init.zeros_(m.bias)
 
 # In un algoritmo di policy gradient continuo (come REINFORCE o Actor-Critic), la policy pi(a | s) viene
@@ -53,7 +53,7 @@ class Critic(torch.nn.Module):
 # Output: una distribuzione da cui l’Agent può campionare azioni esplorative e calcolare
 #         log-prob per la loss del policy gradient.
 class Policy(torch.nn.Module):
-    def __init__(self, state_space, action_space, hidden=64):
+    def __init__(self, state_space, action_space, hidden=64):  # tuned hidden
         super().__init__()
         self.state_space = state_space
         self.action_space = action_space
@@ -68,27 +68,33 @@ class Policy(torch.nn.Module):
         # Durante l’apprendimento, voglio regolare i pesi dei layer in modo che mu(s) si sposti verso
         # le azioni che producono ritorni maggiori
 
-        self.sigma_activation = F.softplus  # Funzione di trasformazione per garantire che la deviazione
-                                            # standard sigma sia sempre positiva
+        # self.sigma_activation = F.softplus  # Funzione di trasformazione per garantire che la deviazione
+                                              # standard sigma sia sempre positiva
         init_sigma = 0.5
-        self.sigma = torch.nn.Parameter(torch.zeros(self.action_space)+init_sigma)
-        # crea un tensore di zeri di lunghezza pari al numero di azioni.
-	    # •	"+ init_sigma" lo riempie con 0.5
+        init_log_sigma = np.log(init_sigma)
+        self.log_sigma = torch.nn.Parameter(torch.full((action_space,), init_log_sigma, dtype=torch.float32))
         self.init_weights()
 
     def init_weights(self):
         for m in self.modules():
             if isinstance(m, torch.nn.Linear):
-                torch.nn.init.normal_(m.weight)
-                torch.nn.init.zeros_(m.bias)
+                torch.nn.init.normal_(m.weight, mean=0.0, std=0.1)
+                torch.nn.init.constant_(m.bias, 0.0)
 
     # Trasforma un batch di stati x in una distribuzione di azioni
     def forward(self, x):  # Input: stato s di dimensione state_space
+        # x: [batch_size, obs_dim]
         x = self.tanh(self.fc1_actor(x))
         x = self.tanh(self.fc2_actor(x))
-        action_mean = self.fc3_actor_mean(x)
+        action_mean = self.fc3_actor_mean(x)  # # [batch_size, action_dim]
 
-        sigma = self.sigma_activation(self.sigma)
+        # Calcola sigma tramite exp(log_sigma) e broadcasta
+        sigma = torch.exp(self.log_sigma).expand(x.size(0), -1).clamp(min=1e-4, max=1.0)  # [batch_size, action_dim]
+        if torch.any(torch.isnan(sigma)):
+            print("NaN in sigma! sigma =", sigma)
+        if torch.any(torch.isnan(action_mean)):
+            print("NaN in action_mean!", action_mean)
+
         return Normal(action_mean, sigma)  # Restituisce un oggetto torch.distributions.Normal, che incapsula:
 	                                       # •	loc= action_mean
 	                                       # •	scale= sigma
@@ -102,15 +108,15 @@ class Policy(torch.nn.Module):
 # - device='cpu': device su cui eseguire i calcoli PyTorch, può essere "cpu" oppure "cuda"
 class Agent(object):
     def __init__(self, policy: Policy, max_action, critic: Critic | None = None, device: str = 'cpu',
-        gamma: float = 0.99,
-        lr_policy: float = 1e-3,
-        lr_critic: float = 1e-3,
+        gamma: float = 0.99, # tuned
+        lr_policy: float = 5e-4,  # tuned
+        lr_critic: float = 5e-4,
     ):
         self.train_device = device
         self.policy = policy.to(self.train_device)  # Questo garantisce che i forward e backward
                                                     # avvengano tutti sullo stesso hardware
         self.critic = critic.to(self.train_device) if critic is not None else None
-        self.max_action = max_action # valore massimo dell'azione che l'agent può compiere
+        self.max_action = torch.tensor(max_action, device=self.train_device) # valore massimo dell'azione che l'agent può compiere
         self.optimizer = torch.optim.Adam(self.policy.parameters(), lr=lr_policy)
         # Crea un ottimizzatore Adam per i parametri della policy
         self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=lr_critic)
@@ -133,28 +139,28 @@ class Agent(object):
     #    nell’azione da eseguire.
 	# 2. Fornire informazioni di training: restituisce anche il log‐probability dell’azione, fondamentale
     #    per calcolare la loss del policy gradient.
-    def get_action(self, state, evaluation=False):  # evaluation (bool): se True, viene usata la politica
+    def get_action(self, states, evaluation=False):  # evaluation (bool): se True, viene usata la politica
                                                     # in modalità “deterministica” (solo la media), utile
                                                     # in fase di test o valutazione
-        x = torch.from_numpy(state).float().to(self.train_device)  # Input del forward della rete di policy
+        x = torch.from_numpy(np.asarray(states)).float().to(self.train_device)  # Input del forward della rete di policy
         dist = self.policy(x)  # dist rappresenta la distribuzione di probabilità da cui campionare le azioni
 
         if evaluation:  # Non vogliamo esplorazione casuale, ma l’azione “più probabile”: la media
-            action = torch.tanh(dist.mean) * self.max_action
-            return action.detach().cpu().numpy(), None  # .detach() scollega il tensore dal grafo computazionale
+            actions = torch.tanh(dist.mean) * self.max_action
+            return actions.detach().cpu().numpy(), None  # .detach() scollega il tensore dal grafo computazionale
                                                            # (non servono gradienti)
 
-        pre_tanh_action = dist.sample()  # Estrae un’azione casuale
+        pre_tanh_action = dist.rsample()  # Estrae un’azione casuale
         tanh_action = torch.tanh(pre_tanh_action) # Comprimi le azioni tra [-1, 1]
-        action = tanh_action * self.max_action # Adatta il range tra [-self.max_action, self.max_action]
+        actions = tanh_action * self.max_action # Adatta il range tra [-self.max_action, self.max_action]
 
         # Compute log-prob with correction
-        log_prob = dist.log_prob(pre_tanh_action) # Le log probabilities devono essere calcolate dal sampling della normale
-        log_prob -= torch.log(1 - tanh_action.pow(2) + 1e-6) # Deriva dalla formula log p(a) = log p(u) - \sum_i log(1-tanh^2(ui)); epsilon = 1e-6 evita log(0)
-        log_prob = log_prob.sum(dim = -1, keepdim = True) # calcola la somma delle log probabilities
+        log_probs = dist.log_prob(pre_tanh_action) # Le log probabilities devono essere calcolate dal sampling della normale
+        log_probs -= torch.log(1 - tanh_action.pow(2) + 1e-6) # Deriva dalla formula log p(a) = log p(u) - \sum_i log(1-tanh^2(ui)); epsilon = 1e-6 evita log(0)
+        log_probs = log_probs.sum(dim = -1, keepdim = True) # calcola la somma delle log probabilities
 
         # -------- PATCH: detach prima di numpy() --------
-        return action.detach().cpu().numpy(), log_prob
+        return actions.detach().cpu().numpy(), log_probs
         # Output: - l’azione pronta per l’ambiente, senza traccia di gradiente
         #         - log_prob: tensore PyTorch, verrà usato più tardi in update_policy per costruire
         #           la loss del policy gradient

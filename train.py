@@ -9,6 +9,7 @@ Compatibile con Gymnasium (>= 1.0) e torch.
 from __future__ import annotations
 
 import argparse
+import time
 
 import torch
 import gymnasium as gym
@@ -16,6 +17,7 @@ import gymnasium as gym
 # registra gli env CustomHopper-* con le chiamate register()
 from env.custom_hopper import *  # noqa: F401,F403
 from agent import Agent, Policy,Critic
+from gymnasium.vector import AsyncVectorEnv
 
 
 # --------------------------------------------------------------------- #
@@ -42,14 +44,18 @@ args = parse_args()
 # --------------------------------------------------------------------- #
 
 def main() -> None:
-    env = gym.make(
-        "CustomHopper-source-v0",             # oppure "CustomHopper-target-v0"
-        render_mode="human" if args.render else None,
-    )
+    def make_env(seed_offset):
+        def _init():
+            env = gym.make("CustomHopper-source-v0")  # oppure "CustomHopper-target-v0"
+            env.reset(seed=seed_offset)
+            return env
+        return _init
+
+    env = AsyncVectorEnv([make_env(i) for i in range(8)])  # oppure AsyncVectorEnv
 
     print("Action space :", env.action_space)
     print("State space  :", env.observation_space)
-    print("Dynamics parameters:", env.unwrapped.get_parameters())
+    # print("Dynamics parameters:", env.unwrapped.get_parameters())
 
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
@@ -59,34 +65,40 @@ def main() -> None:
         policy = Policy(obs_dim, act_dim)
         agent = Agent(policy, device=args.device, max_action = max_action)
 
+        start_time = time.time()
         for episode in range(args.n_episodes):
             obs, _ = env.reset(seed=episode)
-            terminated = truncated = False
-            ep_return = 0.0
+            terminated = [False] * env.num_envs
+            ep_returns = np.zeros(env.num_envs)
 
-            while not (terminated or truncated):
-                action, log_prob = agent.get_action(obs)
+            while not all(terminated):
+                actions, log_probs = agent.get_action(obs)  # log_probs e actions sono vettori
                 prev_obs = obs
 
-                obs, reward, terminated, truncated, _ = env.step(action)
-                done = terminated or truncated
+                obs, rewards, term, trunc, _ = env.step(actions)
+                done = np.logical_or(term, trunc)
 
-                agent.store_outcome(prev_obs, obs, log_prob, reward, done)
-                ep_return += reward
+                for i in range(env.num_envs):
+                    if not terminated[i]:  # evita di accumulare dati per env già terminati
+                        agent.store_outcome(prev_obs[i], obs[i], log_probs[i], rewards[i], done[i])
+                        ep_returns[i] += rewards[i]
+                terminated = np.logical_or(terminated, done)
 
-            loss = agent.update_policy(args.algorithm)              #Va fuori perchè deve aggiornare ad ogni episodio
+            loss = agent.update_policy(args.algorithm)  # Va fuori perchè deve aggiornare ad ogni episodio
 
             if args.render:
                 env.render()
 
             if (episode + 1) % args.print_every == 0:
-                print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
+                elapsed = time.time() - start_time
+                print(f"[Episode {episode+1}] return = {ep_returns.mean():.2f} loss = {loss:.4f} elapsed = {elapsed:.1f}s")
+                start_time = time.time()  # resetta il timer
 
         # salva i pesi a fine training
-        torch.save(agent.policy.state_dict(), "model.mdl")
+        torch.save(agent.policy.state_dict(), "model_REINFORCE.mdl")
         env.close()
 
-    def ACTORCRITIC():
+    def ACTORCRITIC():  # Da modificare per Batch
         policy = Policy(obs_dim, act_dim)
         critic = Critic(obs_dim, act_dim)
         agent = Agent(policy, device=args.device,critic=critic, max_action = max_action)
@@ -115,7 +127,7 @@ def main() -> None:
                 print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
 
         # salva i pesi a fine training
-        torch.save(agent.policy.state_dict(), "model.mdl")
+        torch.save(agent.policy.state_dict(), "model_AC.mdl")
         env.close()
     
 
