@@ -1,3 +1,5 @@
+from __future__ import annotations
+
 """Test an RL agent on the OpenAI Gym Hopper environment"""
 """
 test.py
@@ -6,7 +8,7 @@ Valuta una policy salvata su CustomHopper-{source|target}-v0
 dopo il refactor a Gymnasium (>= 1.0).
 """
 
-from __future__ import annotations
+
 
 import argparse
 from pathlib import Path
@@ -47,15 +49,16 @@ def main() -> None:
 
     print("Action space :", env.action_space)
     print("State space  :", env.observation_space)
-    print("Dynamics parameters:", env.get_parameters())
+    print("Dynamics parameters:", env.unwrapped.get_parameters())
 
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
+    max_action = env.action_space.high
 
     policy = Policy(obs_dim, act_dim)
-    policy.load_state_dict(torch.load(args.model, map_location=args.device), strict=True)
+    policy.load_state_dict(torch.load(args.model, map_location=args.device), strict=False) #True
 
-    agent = Agent(policy, device=args.device)
+    agent = Agent(policy, device=args.device, max_action=max_action)
 
     for ep in range(args.episodes):
         obs, info = env.reset(seed=ep)

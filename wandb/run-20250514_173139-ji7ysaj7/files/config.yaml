@@ -1,0 +1,285 @@
+_current_progress_remaining:
+    value: 1
+_custom_logger:
+    value: "False"
+_episode_num:
+    value: 0
+_episode_storage:
+    value: None
+_last_episode_starts:
+    value: '[ True  True  True  True  True  True  True  True]'
+_last_obs:
+    value: |-
+        [[ 1.24972452e+00 -1.70215710e-03 -4.42755200e-03 -2.15276458e-03
+          -3.83581270e-03 -2.80713592e-03 -2.53267375e-03 -3.03025408e-03
+           1.46292041e-03 -4.16861900e-03 -2.18104427e-03]
+         [ 1.24974653e+00  2.38549807e-03  2.43482857e-03  3.24968726e-03
+           3.17119480e-04 -4.71423643e-04  1.68268731e-03 -3.00934141e-03
+          -2.42906275e-04 -4.75880712e-03 -5.93326490e-04]
+         [ 1.24882832e+00 -4.02516930e-03  1.40596886e-03  2.40088842e-03
+           2.66044600e-03  2.05567734e-03 -2.60443725e-03 -3.55448506e-03
+           4.96531242e-03  2.42790732e-04  3.78307670e-03]
+         [ 1.25240080e+00 -2.81563826e-03 -3.29286777e-03 -3.48141039e-03
+          -1.00274057e-03 -3.55163506e-03 -1.10662596e-03 -3.89806102e-03
+           8.78813875e-04 -2.73075166e-03  4.43224171e-03]
+         [ 1.25168262e+00 -1.29744201e-03  1.66895528e-03  1.04692693e-03
+           3.14898239e-03 -3.56464939e-03  1.62150778e-04  9.91719352e-04
+           4.83459713e-03 -1.32039769e-03 -1.26395685e-03]
+         [ 1.24868936e+00 -2.70292827e-03  2.90939064e-03  1.95365362e-03
+           3.09945045e-03  4.56502109e-04  4.22943816e-03 -1.44989096e-03
+          -3.55139313e-04  1.61578730e-04 -6.31277246e-04]
+         [ 1.25353372e+00 -3.36592125e-03  2.11558015e-03 -3.73097934e-03
+           5.16507531e-04 -4.08715979e-03  3.79003932e-03 -2.92977814e-03
+          -4.74916715e-03  4.31511481e-03 -3.53354235e-03]
+         [ 1.25172000e+00 -2.64844903e-03  3.09485754e-03 -5.82764215e-04
+          -3.90693366e-03  6.22425192e-04 -1.13531921e-03 -8.66704312e-04
+          -2.70374799e-04 -4.86170909e-03 -4.44413697e-03]]
+_last_original_obs:
+    value: None
+_logger:
+    value: <stable_baselines3.common.logger.Logger object at 0x1643d2690>
+_n_updates:
+    value: 0
+_num_timesteps_at_start:
+    value: 0
+_stats_window_size:
+    value: 100
+_total_timesteps:
+    value: 1000000
+_vec_normalize_env:
+    value: None
+_wandb:
+    value:
+        cli_version: 0.19.11
+        m: []
+        python_version: 3.11.11
+        t:
+            "1":
+                - 1
+                - 55
+            "2":
+                - 1
+                - 55
+            "3":
+                - 3
+                - 16
+                - 22
+                - 23
+                - 35
+                - 55
+            "4": 3.11.11
+            "5": 0.19.11
+            "8":
+                - 5
+            "12": 0.19.11
+            "13": darwin-arm64
+action_noise:
+    value: None
+action_space:
+    value: Box(-1.0, 1.0, (3,), float32)
+actor:
+    value: |-
+        Actor(
+          (features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (latent_pi): Sequential(
+            (0): Linear(in_features=11, out_features=256, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=256, out_features=256, bias=True)
+            (3): ReLU()
+          )
+          (mu): Linear(in_features=256, out_features=3, bias=True)
+          (log_std): Linear(in_features=256, out_features=3, bias=True)
+        )
+algo:
+    value: SAC
+algorithm:
+    value: SAC
+batch_norm_stats:
+    value: '[]'
+batch_norm_stats_target:
+    value: '[]'
+batch_size:
+    value: 256
+buffer_size:
+    value: 1000000
+critic:
+    value: |-
+        ContinuousCritic(
+          (features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (qf0): Sequential(
+            (0): Linear(in_features=14, out_features=256, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=256, out_features=256, bias=True)
+            (3): ReLU()
+            (4): Linear(in_features=256, out_features=1, bias=True)
+          )
+          (qf1): Sequential(
+            (0): Linear(in_features=14, out_features=256, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=256, out_features=256, bias=True)
+            (3): ReLU()
+            (4): Linear(in_features=256, out_features=1, bias=True)
+          )
+        )
+critic_target:
+    value: |-
+        ContinuousCritic(
+          (features_extractor): FlattenExtractor(
+            (flatten): Flatten(start_dim=1, end_dim=-1)
+          )
+          (qf0): Sequential(
+            (0): Linear(in_features=14, out_features=256, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=256, out_features=256, bias=True)
+            (3): ReLU()
+            (4): Linear(in_features=256, out_features=1, bias=True)
+          )
+          (qf1): Sequential(
+            (0): Linear(in_features=14, out_features=256, bias=True)
+            (1): ReLU()
+            (2): Linear(in_features=256, out_features=256, bias=True)
+            (3): ReLU()
+            (4): Linear(in_features=256, out_features=1, bias=True)
+          )
+        )
+device:
+    value: cpu
+ent_coef:
+    value: auto
+ent_coef_optimizer:
+    value: |-
+        Adam (
+        Parameter Group 0
+            amsgrad: False
+            betas: (0.9, 0.999)
+            capturable: False
+            decoupled_weight_decay: False
+            differentiable: False
+            eps: 1e-08
+            foreach: None
+            fused: None
+            lr: 0.0003
+            maximize: False
+            weight_decay: 0
+        )
+env:
+    value: <stable_baselines3.common.vec_env.dummy_vec_env.DummyVecEnv object at 0x1169f5c10>
+ep_info_buffer:
+    value: deque([], maxlen=100)
+ep_success_buffer:
+    value: deque([], maxlen=100)
+gamma:
+    value: 0.99
+gradient_steps:
+    value: 1
+learning_rate:
+    value: 0.0003
+learning_starts:
+    value: 10000
+log_ent_coef:
+    value: tensor([0.], requires_grad=True)
+lr_schedule:
+    value: <function get_schedule_fn.<locals>.<lambda> at 0x117733b00>
+n_envs:
+    value: 8
+n_steps:
+    value: 1
+num_timesteps:
+    value: 0
+observation_space:
+    value: Box(-inf, inf, (11,), float64)
+optimize_memory_usage:
+    value: "False"
+policy:
+    value: |-
+        SACPolicy(
+          (actor): Actor(
+            (features_extractor): FlattenExtractor(
+              (flatten): Flatten(start_dim=1, end_dim=-1)
+            )
+            (latent_pi): Sequential(
+              (0): Linear(in_features=11, out_features=256, bias=True)
+              (1): ReLU()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): ReLU()
+            )
+            (mu): Linear(in_features=256, out_features=3, bias=True)
+            (log_std): Linear(in_features=256, out_features=3, bias=True)
+          )
+          (critic): ContinuousCritic(
+            (features_extractor): FlattenExtractor(
+              (flatten): Flatten(start_dim=1, end_dim=-1)
+            )
+            (qf0): Sequential(
+              (0): Linear(in_features=14, out_features=256, bias=True)
+              (1): ReLU()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): ReLU()
+              (4): Linear(in_features=256, out_features=1, bias=True)
+            )
+            (qf1): Sequential(
+              (0): Linear(in_features=14, out_features=256, bias=True)
+              (1): ReLU()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): ReLU()
+              (4): Linear(in_features=256, out_features=1, bias=True)
+            )
+          )
+          (critic_target): ContinuousCritic(
+            (features_extractor): FlattenExtractor(
+              (flatten): Flatten(start_dim=1, end_dim=-1)
+            )
+            (qf0): Sequential(
+              (0): Linear(in_features=14, out_features=256, bias=True)
+              (1): ReLU()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): ReLU()
+              (4): Linear(in_features=256, out_features=1, bias=True)
+            )
+            (qf1): Sequential(
+              (0): Linear(in_features=14, out_features=256, bias=True)
+              (1): ReLU()
+              (2): Linear(in_features=256, out_features=256, bias=True)
+              (3): ReLU()
+              (4): Linear(in_features=256, out_features=1, bias=True)
+            )
+          )
+        )
+policy_class:
+    value: <class 'stable_baselines3.sac.policies.SACPolicy'>
+policy_kwargs:
+    value: '{''use_sde'': False}'
+replay_buffer:
+    value: <stable_baselines3.common.buffers.ReplayBuffer object at 0x11694e150>
+replay_buffer_class:
+    value: <class 'stable_baselines3.common.buffers.ReplayBuffer'>
+replay_buffer_kwargs:
+    value: '{}'
+sde_sample_freq:
+    value: -1
+seed:
+    value: None
+start_time:
+    value: 1747236700146219000
+target_entropy:
+    value: -3
+target_update_interval:
+    value: 1
+tau:
+    value: 0.005
+tensorboard_log:
+    value: ./tb
+total_timesteps:
+    value: 1000000
+train_freq:
+    value: 1
+use_sde:
+    value: "False"
+use_sde_at_warmup:
+    value: "False"
+verbose:
+    value: 1

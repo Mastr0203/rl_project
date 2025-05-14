@@ -13,6 +13,11 @@ import time
 import shutil
 import os
 
+# WandbCallback permette di integrare facilmente wandb con gli algoritmi di RL di Stable Baselines3,
+# automaticamente registrando dati come rewards, loss, e altri metrics durante l'addestramento.
+import wandb
+from wandb.integration.sb3 import WandbCallback
+
 import argparse
 import gymnasium as gym
 from stable_baselines3 import PPO, SAC  # sono le classi di SB3 che incapsulano l’algoritmo (rete policy + ottimizzatori + loop di training)
@@ -61,7 +66,7 @@ def make_model_name(algo: str, hypers: dict, timesteps: int, counter: int = None
 # 1. Hyperparameters
 # -----------------------------
 COMMON_HYPERS = {
-    "total_timesteps": 100_000,  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
+    "total_timesteps": 1_000_000,  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
     "gamma": 0.99,
     "tensorboard_log": "./tb",
 }
@@ -72,7 +77,7 @@ ALG_HYPERS = {
         "batch_size": 64,  # suddivisione del batch in minibatch per più epoch
         "n_steps": 2048,  # ogni quante interazioni con l’ambiente SB3 calcola un batch per il gradient-update
         "clip_range": 0.2,
-        "ent_coef": 0.0,  # Entropy coefficient for the loss calculation
+        "ent_coef": 0.0,  # Entropy coefficient for the loss calculation    0.05
     },
     "SAC": {
         "learning_rate": 3e-4,
@@ -112,10 +117,13 @@ def make_env(domain: str) -> gym.Env:
 	        •	Se ottiene un nuovo record di ricompensa media, salva quel “best model” in una cartella dedicata.
 	        •	Registra metriche (reward, std, …) in un file di log per poterle visualizzare con TensorBoard o
                 altri strumenti."""
-def create_callbacks(n_steps: int, 
+def create_callbacks(n_steps: int,
+                     args, 
                      eval_env: gym.Env,
                      patience: int = 5,
                      min_evals: int = 10):
+    
+    # Inserire 'checkpoint_callback nel return se si vuole utilizzare'
     checkpoint_callback = CheckpointCallback(
         save_freq=100_000 // n_steps,
         save_path="./checkpoints/",
@@ -124,13 +132,7 @@ def create_callbacks(n_steps: int,
     # •	CheckpointCallback:
 	#   •	Ogni save_freq di volte viene invocato env.step() chiama model.save(…)
 	#   •	Dietro le quinte serializza: pesi reti, stato ottimizzatore, numero di passi.
-    stop_callback = StopTrainingOnNoModelImprovement(
-        max_no_improvement_evals=patience,
-        min_evals=min_evals,
-        verbose=1
-    )
-    # Callback di early stopping: interrompe se non migliora per 'patience' evals
-    eval_env = make_env("target")
+
     eval_callback = EvalCallback(
         eval_env,
         best_model_save_path="./best_model/",  # save the best model
@@ -139,10 +141,44 @@ def create_callbacks(n_steps: int,
         deterministic=True,
         render=False
     )
+    callbacks = [eval_callback]
     # •	EvalCallback:
 	#   •	Ogni eval_freq batch esegue evaluate_policy(model, eval_env, …) internamente.
 	#   •	Se la ricompensa media supera il best reward precedente, salva automaticamente con model.save(best_model_path)
-    return [checkpoint_callback, eval_callback]
+
+    # stop_callback = StopTrainingOnNoModelImprovement(
+    #     max_no_improvement_evals=patience,
+    #     min_evals=min_evals,
+    #     verbose=1
+    # )
+  #  stop_callback.parent = eval_callback
+
+    # Callback di early stopping: interrompe se non migliora per 'patience' evals
+    
+    if args.WandDB:
+    # Inizializzi i parametri di Wandb
+        wandb.init(
+            project="CustomHopper-RL",
+            config={
+                "algorithm": args.algo,
+                "n_steps": n_steps,
+                **COMMON_HYPERS,
+                **ALG_HYPERS[args.algo],
+            },
+            name= f"{args.algo}-{args.train_domain}", # personalizziamo il nome es. PPO-Source : Si potrebbe poi aggiungere per il Tuning nomi diversi
+            sync_tensorboard=True,
+            monitor_gym=True,
+        )
+        
+        # Callback per salvare modelli e loggare dati sul sito di Wandb
+        wandb_callback = WandbCallback(
+            model_save_freq=50_000,   # 50_000
+            model_save_path=f"./wandb_models/{wandb.run.id}/",
+            verbose=2,
+        )
+        callbacks.append(wandb_callback)
+    
+    return callbacks
 
 # -----------------------------
 # 4. Main
@@ -151,13 +187,16 @@ def main():
     parser = argparse.ArgumentParser(description="Train PPO or SAC on CustomHopper")
     parser.add_argument("--algo", choices=["PPO", "SAC"], default="PPO",
                         help="Algorithm to use: PPO or SAC")
+    parser.add_argument("--train_domain", choices=["source", "target"], default="source", help="Domain to train on [source, target]")
+    parser.add_argument("--test_domain", choices=["source", "target"], default="target", help="Domain to test on [source, target]")
+    parser.add_argument("--WandDB", action="store_true", help="Use WandDB Callback")
     args = parser.parse_args()
     algo = args.algo
 
     # create envs
-    train_env = make_vec_env(lambda: make_env("source"), n_envs=8)  # accelera e stabilizza il learning passando
+    train_env = make_vec_env(lambda: make_env(args.train_domain), n_envs=8)  # accelera e stabilizza il learning passando
                                                                     # un vec_env con più ambienti in parallelo
-    eval_env = make_env("target")
+    eval_env = make_env(args.test_domain)
 
     # collect hyperparams
     hypers = {**COMMON_HYPERS, **ALG_HYPERS[algo]}
@@ -198,6 +237,7 @@ def main():
 
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),
+    args=args,
     eval_env=eval_env,
     patience=5,     # numero di valutazioni consecutive senza improvement
     min_evals=10    # numero minimo di valutazioni prima di iniziare a stoppare

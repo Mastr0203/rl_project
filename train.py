@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import time
 
+import wandb
 import torch
 import gymnasium as gym
 
@@ -32,6 +33,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--render", action="store_true", help="visualizza la GUI durante il training")
 
     p.add_argument('--algorithm', default='REINFORCE', type=str, help='Selected Model [REINFORCE, ActorCritic]')
+    p.add_argument('--domain', default='source', choices=["source", "target"], help="Domain to train on [source, target]")
+    p.add_argument("--WandDB", action="store_true", help="Use WandDB Callback")
 
     return p.parse_args()
 
@@ -44,9 +47,25 @@ args = parse_args()
 # --------------------------------------------------------------------- #
 
 def main() -> None:
+
+    if args.WandDB:
+         # Inizializza wandb
+        wandb.init(
+            project= "Reinforcement Learning",
+            config={
+                "algorithm": args.algorithm,
+                "domain": args.domain,
+                "n_episodes": args.n_episodes,
+                "device": args.device,
+            },
+            name= f"{args.algorithm}-{args.domain}", # personalizziamo il nome es. Reinforce-Source : Si potrebbe poi aggiungere per il Tuning nomi diversi
+            sync_tensorboard=True,
+            monitor_gym=True,
+        )
+
     def make_env(seed_offset):
         def _init():
-            env = gym.make("CustomHopper-source-v0")  # oppure "CustomHopper-target-v0"
+            env = gym.make(f"CustomHopper-{args.domain}-v0")  # oppure "CustomHopper-target-v0"
             env.reset(seed=seed_offset)
             return env
         return _init
@@ -86,6 +105,18 @@ def main() -> None:
 
             loss = agent.update_policy(args.algorithm)  # Va fuori perchè deve aggiornare ad ogni episodio
 
+            if args.WandDB:
+            # Logging per WandB
+                wandb.log({
+                    "episode": episode + 1,
+                    "mean_return": ep_returns.mean(),
+                    "max_return": ep_returns.max(),
+                    "min_return": ep_returns.min(),
+                    "loss": loss.item() if isinstance(loss, torch.Tensor) else loss,
+                    "time_elapsed": time.time() - start_time,
+                })
+
+
             if args.render:
                 env.render()
 
@@ -95,7 +126,10 @@ def main() -> None:
                 start_time = time.time()  # resetta il timer
 
         # salva i pesi a fine training
-        torch.save(agent.policy.state_dict(), "model_REINFORCE.mdl")
+        model_path = f"model_REINFORCE_{args.domain}.mdl"
+        torch.save(agent.policy.state_dict(), model_path)
+        if args.WandDB:
+            wandb.save(model_path)
         env.close()
 
     def ACTORCRITIC():  # Da modificare per Batch
@@ -123,11 +157,21 @@ def main() -> None:
                 if args.render:
                     env.render()
 
+            if args.WandDB:
+                wandb.log({
+                    "episode": episode + 1,
+                    "return": ep_return,
+                    "loss": loss,
+                })
+
             if (episode + 1) % args.print_every == 0:
                 print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
 
         # salva i pesi a fine training
-        torch.save(agent.policy.state_dict(), "model_AC.mdl")
+        model_path = f"model_AC_{args.domain}.mdl"
+        torch.save(agent.policy.state_dict(), model_path)
+        if args.WandDB:
+            wandb.save(model_path)
         env.close()
     
 

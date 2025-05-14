@@ -1,0 +1,10 @@
+Traceback (most recent call last):
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 286, in <module>
+    main()
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 236, in main
+    callbacks = create_callbacks(
+                ^^^^^^^^^^^^^^^^^
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 176, in create_callbacks
+    if args.WanDB:
+       ^^^^^^^^^^
+AttributeError: 'Namespace' object has no attribute 'WanDB'
