@@ -36,6 +36,13 @@ def parse_args() -> argparse.Namespace:
     p.add_argument('--domain', default='source', choices=["source", "target"], help="Domain to train on [source, target]")
     p.add_argument("--WandDB", action="store_true", help="Use WandDB Callback")
 
+    p.add_argument('--baseline', default='0', type=str, help="Insert a value or write 'dynamic' to state-dependent baseline")
+
+    p.add_argument("--gamma", default=0.99, type = float, help="Gamma to discount future rewards")
+    p.add_argument("--lr-policy", default=5e-4, type = float, help="Learning Rate for Policy Updates")
+    p.add_argument("--lr-critic", default=5e-4, type = float, help="Learning Rate for Critic Updates")
+    p.add_argument("--hidden", default=64, type=int, help='Hidden Layers for Critic and Actor Nets')
+
     return p.parse_args()
 
 
@@ -80,9 +87,39 @@ def main() -> None:
     act_dim = env.action_space.shape[-1]
     max_action = env.action_space.high
 
+    args_policy = {
+        "state_space" : obs_dim,
+        "action_space" : act_dim,
+        "hidden" : args.hidden
+        }
+    
+    args_critic = {
+        "state_space" : obs_dim,
+        "action_space" : act_dim,
+        "hidden" : args.hidden
+    }
+    
+    args_agent = {
+        "max_action" : max_action,
+        "device" : args.device,
+        "gamma" : args.gamma,
+        "lr_policy" : args.lr_policy,
+        "lr_critic" : args.lr_critic,
+        "baseline" : args.baseline
+    }
+
     def REINFORCE():
-        policy = Policy(obs_dim, act_dim)
-        agent = Agent(policy, device=args.device, max_action = max_action)
+        args_agent["policy"] = Policy(**args_policy)
+
+        if args.baseline == "dynamic":
+            args_critic["action_space"] = 0
+            args_agent["critic"] = Critic(**args_critic)
+            args_agent["baseline"] = 0
+        else:
+            args_agent["critic"] = None
+            args_agent["baseline"] = float(args.baseline)
+        
+        agent = Agent(**args_agent)
 
         start_time = time.time()
         for episode in range(args.n_episodes):
@@ -132,10 +169,12 @@ def main() -> None:
             wandb.save(model_path)
         env.close()
 
+        print(f"FINAL_RESULT: {ep_returns.mean():.2f}")
+
     def ACTORCRITIC():  # Da modificare per Batch
-        policy = Policy(obs_dim, act_dim)
-        critic = Critic(obs_dim, act_dim)
-        agent = Agent(policy, device=args.device,critic=critic, max_action = max_action)
+        args_agent["policy"] = Policy(**args_policy)
+        args_agent["critic"] = Critic(**args_critic)
+        agent = Agent(**args_agent)
         
         for episode in range(args.n_episodes):
             obs, _ = env.reset(seed=episode)
@@ -173,7 +212,7 @@ def main() -> None:
         if args.WandDB:
             wandb.save(model_path)
         env.close()
-    
+        print(f"FINAL_RESULT: {ep_return :.2f}")
 
     if args.algorithm == "REINFORCE":
         REINFORCE()

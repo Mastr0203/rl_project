@@ -12,6 +12,16 @@ def discount_rewards(r, gamma = 0.99):  # r: tensor 1-D di ricompense raccolte i
         discounted_r[t] = running_add
     return discounted_r  # Output: tensor discounted_r della stessa forma di r, contenente i ritorni scontati.
 
+def get_baseline(r, baseline_value = 0, states = None, critic = None):
+    baseline = torch.zeros_like(r)
+
+    if critic == None:
+        baseline += baseline_value
+    else:
+        states = states.to(next(critic.parameters()).device)  # assume already batched
+        baseline = critic(states, None).squeeze(-1)
+
+    return baseline
 
 class Critic(torch.nn.Module):
     def __init__(self, state_space, action_space, hidden=64):
@@ -28,8 +38,11 @@ class Critic(torch.nn.Module):
 
     # Il metodo restituisce un’unica predizione scalare per ciascuna coppia (s,a)
     def forward(self, state, action):
-        x = torch.cat([state, action], dim=-1)  # Input: stato s e azione a, concatenati in un vettore
-                                                # di dimensione state_space + action_space
+        if action is not None:
+            x = torch.cat([state, action], dim=-1)  # Input: stato s e azione a, concatenati in un vettore
+        else:
+            x = state   
+                                            # di dimensione state_space + action_space                                        # di dimensione state_space + action_space
         x = self.tanh(self.fc1_critic(x))
         x = self.tanh(self.fc2_critic(x))
         return self.fc3_critic_mean(x)  # Output: Linear(hidden → 1) restituisce la stima del valore Q(s,a)
@@ -111,6 +124,7 @@ class Agent(object):
         gamma: float = 0.99, # tuned
         lr_policy: float = 5e-4,  # tuned
         lr_critic: float = 5e-4,
+        baseline: float = 0
     ):
         self.train_device = device
         self.policy = policy.to(self.train_device)  # Questo garantisce che i forward e backward
@@ -125,6 +139,7 @@ class Agent(object):
         
         # Buffer per raccogliere, passo dopo passo, all’interno di un episodio:
         self.gamma = gamma
+        self.baseline = baseline # baseline per REINFORCE
         self.states = []  # •	states: stati s_t
         self.next_states = []  # •	next_states: stati successivi s_{t+1}
         self.action_log_probs = []  # •	action_log_probs: i logaritmi delle probabilità delle azioni campionate
@@ -206,8 +221,17 @@ class Agent(object):
 
         # ---------------- REINFORCE ---------------- #
         if model == "REINFORCE":
-            disc_returns = discount_rewards(rewards, self.gamma)
-            actor_loss = -(log_probs * disc_returns).sum()
+            pred_baseline = get_baseline(rewards, baseline_value=self.baseline, states=states, critic=self.critic)
+
+            disc_returns = discount_rewards(rewards, self.gamma) # restituisce un tensore (rewards, ) contenente la somma cumulata dei reward scontati di gamma^t
+            advantage = disc_returns - pred_baseline.detach()
+            actor_loss = -(log_probs * advantage).sum() # calcola la loss per l'attore intesa come il prodotto scalare fra le log-probabilities delle azioni nell'episodio e i reward scontati
+
+            if self.critic != None:
+                critic_loss = F.mse_loss(pred_baseline, disc_returns.detach())
+                self.optimizer_critic.zero_grad()
+                critic_loss.backward()
+                self.optimizer_critic.step()
 
             self.optimizer.zero_grad()  # azzera i gradienti precedenti
             actor_loss.backward()  # calcola i nuovi gradienti.
