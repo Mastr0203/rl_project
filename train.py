@@ -14,6 +14,7 @@ import time
 import wandb
 import torch
 import gymnasium as gym
+import numpy as np
 
 # registra gli env CustomHopper-* con le chiamate register()
 from env.custom_hopper import *  # noqa: F401,F403
@@ -171,48 +172,54 @@ def main() -> None:
 
         print(f"FINAL_RESULT: {ep_returns.mean():.2f}")
 
-    def ACTORCRITIC():  # Da modificare per Batch
+    def ACTORCRITIC():
         args_agent["policy"] = Policy(**args_policy)
         args_agent["critic"] = Critic(**args_critic)
         agent = Agent(**args_agent)
-        
-        for episode in range(args.n_episodes):
-            obs, _ = env.reset(seed=episode)
-            terminated = truncated = False
-            ep_return = 0.0
 
-            while not (terminated or truncated):
-                action, log_prob = agent.get_action(obs)
+        start_time = time.time()
+        for episode in range(args.n_episodes):
+            # Reset vectorized env for this episode
+            obs, _ = env.reset(seed=episode)
+            terminated = [False] * env.num_envs
+            ep_returns = np.zeros(env.num_envs)
+
+            # Step until all environments are done
+            while not all(terminated):
+                actions, log_probs = agent.get_action(obs)
                 prev_obs = obs
 
-                obs, reward, terminated, truncated, _ = env.step(action)
-                done = terminated or truncated
+                obs, rewards, term, trunc, _ = env.step(actions)
+                done = np.logical_or(term, trunc)
 
-                agent.store_outcome(prev_obs, obs, log_prob, reward, done)
-                ep_return += reward
+                for i in range(env.num_envs):
+                    if not terminated[i]:
+                        agent.store_outcome(prev_obs[i], obs[i], log_probs[i], rewards[i], done[i])
+                        ep_returns[i] += rewards[i]
+                terminated = np.logical_or(terminated, done)
 
-                loss = agent.update_policy(args.algorithm)      #Aggiorna ad ogni step
+                # Perform update at each step
+                loss = agent.update_policy(args.algorithm)
 
-                if args.render:
-                    env.render()
+            # Optional rendering
+            if args.render:
+                env.render()
 
-            if args.WandDB:
-                wandb.log({
-                    "episode": episode + 1,
-                    "return": ep_return,
-                    "loss": loss,
-                })
-
+            # Logging printout
             if (episode + 1) % args.print_every == 0:
-                print(f"[Episode {episode+1}] return = {ep_return:.2f} loss = {loss}")
+                elapsed = time.time() - start_time
+                print(f"[Episode {episode+1}] mean_return = {ep_returns.mean():.2f} loss = {loss:.4f} elapsed = {elapsed:.1f}s")
+                start_time = time.time()
 
-        # salva i pesi a fine training
+        # Save policy weights after training
         model_path = f"model_AC_{args.domain}.mdl"
         torch.save(agent.policy.state_dict(), model_path)
         if args.WandDB:
             wandb.save(model_path)
         env.close()
-        print(f"FINAL_RESULT: {ep_return :.2f}")
+
+        # Print final average return across all parallel envs
+        print(f"FINAL_RESULT: {ep_returns.mean():.2f}")
 
     if args.algorithm == "REINFORCE":
         REINFORCE()
