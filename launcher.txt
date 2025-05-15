@@ -1,0 +1,11 @@
+#REINFORCE Mac Version
+python3 train.py --n-episodes 100_00 --print-every 20_000 --device cpu --algorithm REINFORCE --domain source --baseline 0 --gamma 0.99 --lr-policy 5e-4 --lr-critic 5e-4 --hidden 64
+
+#ActorCritic
+python3 train.py --n-episodes 100_00 --print-every 20_000 --device cpu --algorithm ActorCritic --domain source --baseline 0 --gamma 0.99 --lr-policy 5e-4 --lr-critic 5e-4 --hidden 64
+
+#PPO Mac Version
+python3 train_sb3.py --algo PPO --train_domain source --test_domain target
+
+#SAC MAc version
+python3 train_sb3.py --algo SAC --train_domain source --test_domain target
