@@ -12,9 +12,9 @@ TRAIN_SCRIPT = os.path.join(SCRIPT_DIR, "train.py")
 # Definisci i quattro set di iperparametri
 experiments = [
     {"gamma": 0.95,  "hidden": 64,  "lr_policy": 1e-4, "lr_critic": 5e-4, "baseline": "20.0"},
-    {"gamma": 0.95,  "hidden": 128, "lr_policy": 1.0,  "lr_critic": 1e-4, "baseline": "20.0"},
-    {"gamma": 0.99,  "hidden": 128, "lr_policy": 1.0,  "lr_critic": 1e-4, "baseline": "0.0"},
-    {"gamma": 0.995, "hidden": 32,  "lr_policy": 1.0,  "lr_critic": 5e-4, "baseline": "dynamic"},
+    {"gamma": 0.95,  "hidden": 128, "lr_policy": 1e-3,  "lr_critic": 1e-4, "baseline": "20.0"},
+    {"gamma": 0.99,  "hidden": 128, "lr_policy": 1e-3,  "lr_critic": 1e-4, "baseline": "0.0"},
+    {"gamma": 0.995, "hidden": 32,  "lr_policy": 1e-3,  "lr_critic": 5e-4, "baseline": "dynamic"},
 ]
 
 # Crea la cartella madre se non esiste

@@ -164,8 +164,13 @@ def main() -> None:
                 start_time = time.time()  # resetta il timer
 
         # salva i pesi a fine training
-        model_path = f"model_REINFORCE_{args.domain}.mdl"
+        model_path = f"model_REINFORCE_{args.domain}.pth"
         torch.save(agent.policy.state_dict(), model_path)
+        # salva il critic (se presente)
+        if agent.critic is not None:
+            model_critic = f"model_REINFORCE_{args.domain}_critic.pth"
+            torch.save(agent.critic.state_dict(), model_critic)
+        
         if args.WandDB:
             wandb.save(model_path)
         env.close()
