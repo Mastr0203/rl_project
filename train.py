@@ -217,8 +217,11 @@ def main() -> None:
                 start_time = time.time()
 
         # Save policy weights after training
-        model_path = f"model_AC_{args.domain}.mdl"
+        model_path = f"model_AC_{args.domain}.pth"
         torch.save(agent.policy.state_dict(), model_path)
+        model_critic = f"model_AC_{args.domain}_critic.pth"
+        torch.save(agent.critic.state_dict(), model_critic)
+
         if args.WandDB:
             wandb.save(model_path)
         env.close()
