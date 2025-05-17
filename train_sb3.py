@@ -65,10 +65,11 @@ def make_model_name(algo: str, hypers: dict, timesteps: int, counter: int = None
 # -----------------------------
 # 1. Hyperparameters
 # -----------------------------
+total_timesteps = 1_000_000  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
+
 COMMON_HYPERS = {
-    "total_timesteps": 1_000_000,  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
-    "gamma": 0.99,
-    "tensorboard_log": "./tb",
+     "gamma": 0.99,
+     "tensorboard_log": "./tb",
 }
 
 ALG_HYPERS = {
@@ -166,7 +167,7 @@ def create_callbacks(n_steps: int,
                 **ALG_HYPERS[args.algo],
             },
             name= f"{args.algo}-{args.train_domain}", # personalizziamo il nome es. PPO-Source : Si potrebbe poi aggiungere per il Tuning nomi diversi
-            sync_tensorboard=True,
+            sync_tensorboard=True, 
             monitor_gym=True,
         )
         
@@ -179,6 +180,51 @@ def create_callbacks(n_steps: int,
         callbacks.append(wandb_callback)
     
     return callbacks
+
+def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_timesteps, callbacks):
+    train_env = make_vec_env(lambda: make_env(train_domain), n_envs=8)  # accelera e stabilizza il learning passando
+                                                                    # un vec_env con più ambienti in parallelo
+    eval_env = make_env(test_domain)
+
+    # TRAIN
+    # 1. Ciclo principale:
+	#   • Raccoglie n_steps interazioni da train_env.
+	#   • Calcola advantage / target critic.
+	#   • Esegue n_epochs di gradient descent sui minibatch interni (solo PPO).
+	#   • Chiede ai callback di checkpoint/eval di agire.
+	# 2.	Continua fino a total_timesteps.
+
+    if algo == "PPO":
+        model = PPO(
+            "MlpPolicy",  # policy network pre-definita, una MLP a 2 layer con attivazione Tanh
+            train_env,  # The environment to learn from
+            **hypers
+        )
+    else:  # SAC
+        model = SAC(
+            "MlpPolicy",
+            train_env,
+            **hypers
+        )
+    start = time.time() # a che serve ?
+    model.learn(
+        total_timesteps=total_timesteps,
+        callback=callbacks
+    )
+    end = time.time() # a che serve?
+    
+
+    eval_env.reset(seed=42)
+    mean_reward, std_reward = evaluate_policy(  # Calcola media e deviazione della somma di ricompense per episodio
+        model,
+        eval_env,
+        n_eval_episodes=50,
+        deterministic=True,  # scegli sempre l’azione più probabile (o la media) proposta dalla rete, eliminando la componente di casualità
+        render=False,
+        warn=False,  # # opzionale: sopprime warning su env non wrappers
+    )
+
+    return mean_reward, std_reward, model
 
 # -----------------------------
 # 4. Main
@@ -193,9 +239,7 @@ def main():
     args = parser.parse_args()
     algo = args.algo
 
-    # create envs
-    train_env = make_vec_env(lambda: make_env(args.train_domain), n_envs=8)  # accelera e stabilizza il learning passando
-                                                                    # un vec_env con più ambienti in parallelo
+     # create env
     eval_env = make_env(args.test_domain)
 
     # collect hyperparams
@@ -206,35 +250,7 @@ def main():
     counter = len(existing) + 1
 
     model_filename = make_model_name(algo, hypers, hypers['total_timesteps'], counter)
-    # instantiate model
-    if algo == "PPO":
-        model = PPO(
-            "MlpPolicy",  # policy network pre-definita, una MLP a 2 layer con attivazione Tanh
-            train_env,  # The environment to learn from
-            learning_rate=hypers['learning_rate'],
-            gamma=hypers['gamma'],
-            n_steps=hypers['n_steps'],
-            batch_size=hypers['batch_size'],
-            clip_range=hypers['clip_range'],
-            ent_coef=hypers['ent_coef'],
-            tensorboard_log=f"{hypers['tensorboard_log']}/{model_filename}",
-            verbose=1,
-        )
-    else:  # SAC
-        model = SAC(
-            "MlpPolicy",
-            train_env,
-            learning_rate=hypers['learning_rate'],
-            gamma=hypers['gamma'],
-            batch_size=hypers['batch_size'],
-            train_freq=hypers['train_freq'],
-            learning_starts=hypers['learning_starts'],
-            buffer_size=hypers['buffer_size'],
-            ent_coef=hypers['ent_coef'],
-            tensorboard_log=f"{hypers['tensorboard_log']}/{model_filename}",
-            verbose=1,
-        )
-
+   
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),
     args=args,
@@ -242,21 +258,10 @@ def main():
     patience=5,     # numero di valutazioni consecutive senza improvement
     min_evals=10    # numero minimo di valutazioni prima di iniziare a stoppare
 )
-    # TRAIN
-    # 1. Ciclo principale:
-	#   • Raccoglie n_steps interazioni da train_env.
-	#   • Calcola advantage / target critic.
-	#   • Esegue n_epochs di gradient descent sui minibatch interni (solo PPO).
-	#   • Chiede ai callback di checkpoint/eval di agire.
-	# 2.	Continua fino a total_timesteps.
-    start = time.time()
-    model.learn(
-        total_timesteps=hypers['total_timesteps'],
-        callback=callbacks
-    )
-    end = time.time()
 
-    print(f"Training time for {hypers['total_timesteps']} steps: {end - start:.2f} seconds")
+#    print(f"Training time for {hypers['total_timesteps']} steps: {end - start:.2f} seconds")
+
+    mean_reward, std_reward, model = train_model(algo, hypers, args.train_domain, args.test_domain, total_timesteps, callbacks)
 
     # save final
     model.save(os.path.join(save_dir, model_filename)) # salva pesi finali, ottimizzatori, parametri

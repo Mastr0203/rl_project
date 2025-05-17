@@ -19,6 +19,7 @@ import gymnasium as gym
 # registra gli env CustomHopper-*
 from env.custom_hopper import *  # noqa: F401,F403
 from agent import Agent, Policy
+from stable_baselines3 import PPO, SAC
 
 
 # --------------------------------------------------------------------- #
@@ -31,6 +32,8 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--device", default="cpu", choices=["cpu", "cuda"], help="torch device")
     p.add_argument("--render", action="store_true", help="visualizza la GUI")
     p.add_argument("--episodes", type=int, default=10, help="# episodi di test")
+    p.add_argument("--dimension", default="target", choices=["source", "target"], help="Domain to test on [source, target]")
+    p.add_argument("--algo", default="REINFORCE", choices=["REINFORCE", "ACTORCRITIC", "PPO", "SAC"], help="Algorithm to use")
     return p.parse_args()
 
 
@@ -43,7 +46,7 @@ args = parse_args()
 
 def main() -> None:
     env = gym.make(
-        "CustomHopper-source-v0",            # o "CustomHopper-target-v0"
+        f"CustomHopper-{args.dimension}-v0",            # o "CustomHopper-target-v0"
         render_mode="human" if args.render else None,
     )
 
@@ -54,11 +57,19 @@ def main() -> None:
     obs_dim = env.observation_space.shape[-1]
     act_dim = env.action_space.shape[-1]
     max_action = env.action_space.high
+    algo_basic = args.algo == "REINFORCE" or args.algo== "ACTORCRITIC"
 
-    policy = Policy(obs_dim, act_dim)
-    policy.load_state_dict(torch.load(args.model, map_location=args.device), strict=False) #True
+    if args.algo == "REINFORCE" or args.algo== "ACTORCRITIC":
+        policy = Policy(obs_dim, act_dim)
+        policy.load_state_dict(torch.load(args.model, map_location=args.device), strict=False) #True
 
-    agent = Agent(policy, device=args.device, max_action=max_action)
+        agent = Agent(policy, device=args.device, max_action=max_action) # agent al posto di model
+    elif args.algo == "PPO":
+        model = PPO.load(args.model)
+    elif args.algo == "SAC":
+        model = SAC.load(args.model)
+    else:
+        raise ValueError(f"Unsupported algorithm: {args.algo}")
 
     for ep in range(args.episodes):
         obs, info = env.reset(seed=ep)
@@ -66,7 +77,10 @@ def main() -> None:
         ep_return = 0.0
 
         while not (terminated or truncated):
-            action, _ = agent.get_action(obs, evaluation=True)
+            if algo_basic:
+                action, _ = agent.get_action(obs, evaluation=True)
+            else:
+                action, _= model.predict(obs, deterministic=True)
             obs, reward, terminated, truncated, info = env.step(action)
             ep_return += reward
 
