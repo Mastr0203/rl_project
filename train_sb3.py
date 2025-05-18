@@ -81,13 +81,14 @@ ALG_HYPERS = {
         "ent_coef": 0.0,  # Entropy coefficient for the loss calculation    0.05
     },
     "SAC": {
-        "learning_rate": 3e-4,
-        # SAC specific
-        "batch_size": 256,
-        "train_freq": 1,  # ogni quante azioni campiona un gradient-step
-        "learning_starts": 10000,  # attendi tante azioni prima di iniziare ad allenare (riempimento buffer)
-        "buffer_size": 1000000,  # dimensione del replay buffer
-        "ent_coef": 'auto',  # SAC sceglie automaticamente il coefficiente di entropia, bilanciando esplorazione e sfruttamento
+        "learning_rate": 3e-4,              # Può essere tunato: 1e-4, 5e-4, 1e-3
+        "batch_size": 256,                  # Tipici valori: 64, 128, 512
+        "train_freq": 1,                    # Ogni quante azioni aggiornare
+        "gradient_steps": 1,                # Quanti gradient step per aggiornamento
+        "learning_starts": 10_000,          # Quando iniziare il training
+        "buffer_size": 1e5,           # Dimensione del replay buffer
+        "ent_coef": "auto",                 # Coefficiente di entropia (auto-tuning)
+        "policy_kwargs": dict(net_arch=[128, 128]),  # Architettura della policy network
     }
 }
 
@@ -182,8 +183,10 @@ def create_callbacks(n_steps: int,
     return callbacks
 
 def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_timesteps, callbacks):
-    train_env = make_vec_env(lambda: make_env(train_domain), n_envs=8)  # accelera e stabilizza il learning passando
-                                                                    # un vec_env con più ambienti in parallelo
+    if algo == "PPO":
+        train_env = make_vec_env(lambda: make_env(train_domain), n_envs=8)  # accelera e stabilizza il learning passando
+    else:  # SAC
+        train_env = make_env(train_domain)
     eval_env = make_env(test_domain)
 
     # TRAIN
@@ -249,7 +252,7 @@ def main():
     existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
     counter = len(existing) + 1
 
-    model_filename = make_model_name(algo, hypers, hypers['total_timesteps'], counter)
+    model_filename = make_model_name(algo, hypers, total_timesteps, counter)
    
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),

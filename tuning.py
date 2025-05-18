@@ -3,10 +3,11 @@ import itertools
 from train_sb3 import train_model as train_sb3
 import argparse
 import csv
+from datetime import datetime
 
 
 parser = argparse.ArgumentParser(description="Train PPO or SAC on CustomHopper")
-parser.add_argument("--algo", choices=["PPO", "SAC"], default="PPO",
+parser.add_argument("--algo", choices=["PPO", "SAC"], default="SAC",
                         help="Algorithm to use: PPO or SAC")
 parser.add_argument("--train_domain", choices=["source", "target"], default="source", help="Domain to train on [source, target]")
 parser.add_argument("--test_domain", choices=["source", "target"], default="target", help="Domain to test on [source, target]")
@@ -35,7 +36,13 @@ param_spaces = {
     },
     "SAC": {
         "learning_rate": [1e-4, 3e-4, 5e-4],
-        "batch_size": [64, 128, 256]
+        "batch_size": [64, 128, 256],
+        "train_freq": [1,4,8],
+        "gradient_steps": [1,4,5,10],
+        "ent_coef": ['auto',0.1,0.01],
+        "learning_starts": [5e3,1e4,2e4],
+        "buffer_size": [1e5,1e6,5e5],
+        "policy_kwargs": [dict(net_arch=[128, 128]), dict(net_arch=[256, 256]),dict(net_arch=[400, 300])]
     }
 }
 
@@ -44,7 +51,8 @@ def grid_search(algo, param_grid, train_domain, test_domain,total_timesteps):
     all_combinations = [dict(zip(keys, v)) for v in itertools.product(*values)]
     results = []
 
-    csv_filename = f"tuning_results/summary_{algo}.csv"
+    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    csv_filename = f"tuning_results/summary_{algo}_{timestamp}.csv"
     with open(csv_filename, "w", newline="") as f:
         fieldnames = list(param_grid.keys()) + ["reward"]
         writer = csv.DictWriter(f, fieldnames=fieldnames)
@@ -55,6 +63,10 @@ def grid_search(algo, param_grid, train_domain, test_domain,total_timesteps):
     #       if algo in ["REINFORCE", "ActorCritic"]:
     #           reward = train_custom(algo, combo, env)
             if algo in ["PPO", "SAC"]:
+                if "buffer_size" in combo:
+                    combo["buffer_size"] = int(combo["buffer_size"])
+                if "learning_starts" in combo:
+                    combo["learning_starts"] = int(combo["learning_starts"])
                 reward, std_reward, model = train_sb3(algo, combo, train_domain, test_domain,total_timesteps, callbacks=None)
             else:
                 raise ValueError("Unsupported algorithm")
