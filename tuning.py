@@ -36,13 +36,11 @@ param_spaces = {
     },
     "SAC": {
         "learning_rate": [1e-4, 3e-4, 5e-4],
-        "batch_size": [64, 128, 256],
-        "train_freq": [1,4,8],
-        "gradient_steps": [1,4,5,10],
-        "ent_coef": ['auto',0.1,0.01],
-        "learning_starts": [5e3,1e4,2e4],
-        "buffer_size": [1e5,1e6,5e5],
-        "policy_kwargs": [dict(net_arch=[128, 128]), dict(net_arch=[256, 256]),dict(net_arch=[400, 300])]
+        "batch_size": [128, 256],
+        "gradient_steps": [1,4],
+        "learning_starts": [5e3,1e4],
+        "buffer_size": [1e5,1e6],
+        "policy_kwargs": [dict(net_arch=[128, 128]), dict(net_arch=[256, 256])]
     }
 }
 

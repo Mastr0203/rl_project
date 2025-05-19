@@ -65,7 +65,8 @@ def make_model_name(algo: str, hypers: dict, timesteps: int, counter: int = None
 # -----------------------------
 # 1. Hyperparameters
 # -----------------------------
-total_timesteps = 1_000_000  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
+total_timesteps = 500_000  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
+                            #Ho settato 200_000 per tuning, mettere 1_000_000 per training
 
 COMMON_HYPERS = {
      "gamma": 0.99,
@@ -84,11 +85,11 @@ ALG_HYPERS = {
         "learning_rate": 3e-4,              # Può essere tunato: 1e-4, 5e-4, 1e-3
         "batch_size": 256,                  # Tipici valori: 64, 128, 512
         "train_freq": 1,                    # Ogni quante azioni aggiornare
-        "gradient_steps": 1,                # Quanti gradient step per aggiornamento
-        "learning_starts": 10_000,          # Quando iniziare il training
-        "buffer_size": 1e5,           # Dimensione del replay buffer
+        "gradient_steps": 4,                # Quanti gradient step per aggiornamento
+        "learning_starts": 5000,          # Quando iniziare il training
+        "buffer_size": int(1e5),           # Dimensione del replay buffer
         "ent_coef": "auto",                 # Coefficiente di entropia (auto-tuning)
-        "policy_kwargs": dict(net_arch=[128, 128]),  # Architettura della policy network
+        "policy_kwargs": dict(net_arch=[256, 256]),  # Architettura della policy network
     }
 }
 
@@ -234,7 +235,7 @@ def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_t
 # -----------------------------
 def main():
     parser = argparse.ArgumentParser(description="Train PPO or SAC on CustomHopper")
-    parser.add_argument("--algo", choices=["PPO", "SAC"], default="PPO",
+    parser.add_argument("--algo", choices=["PPO", "SAC"], default="SAC",
                         help="Algorithm to use: PPO or SAC")
     parser.add_argument("--train_domain", choices=["source", "target"], default="source", help="Domain to train on [source, target]")
     parser.add_argument("--test_domain", choices=["source", "target"], default="target", help="Domain to test on [source, target]")
