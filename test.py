@@ -33,7 +33,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--render", action="store_true", help="visualizza la GUI")
     p.add_argument("--episodes", type=int, default=10, help="# episodi di test")
     p.add_argument("--dimension", default="target", choices=["source", "target"], help="Domain to test on [source, target]")
-    p.add_argument("--algo", default="REINFORCE", choices=["REINFORCE", "ACTORCRITIC", "PPO", "SAC"], help="Algorithm to use")
+    p.add_argument("--algo", default="PPO", choices=["REINFORCE", "ACTORCRITIC", "PPO", "SAC"], help="Algorithm to use")
     return p.parse_args()
 
 

@@ -132,7 +132,11 @@ def create_callbacks(n_steps: int,
                      eval_env: gym.Env,
                      patience: int = 5,
                      min_evals: int = 10):
-    
+    run_name = f"{args.train_domain}_{args.test_domain}"
+    if args.UDR:
+        run_name += "_udr"
+    best_model_path = f"./best_model/{run_name}"
+
     # Inserire 'checkpoint_callback nel return se si vuole utilizzare'
     checkpoint_callback = CheckpointCallback(
         save_freq=100_000 // n_steps,
@@ -145,7 +149,7 @@ def create_callbacks(n_steps: int,
 
     eval_callback = EvalCallback(
         eval_env,
-        best_model_save_path="./best_model/",  # save the best model
+        best_model_save_path=best_model_path,  # save the best model with a unique name
         # log_path="./logs/",  # save the evaluations results in a NumPy archive
         eval_freq=50_000 // n_steps,
         deterministic=True,

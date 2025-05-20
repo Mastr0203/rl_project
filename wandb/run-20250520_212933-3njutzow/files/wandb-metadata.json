@@ -1,0 +1,46 @@
+{
+  "os": "macOS-15.4.1-arm64-arm-64bit",
+  "python": "CPython 3.11.11",
+  "startedAt": "2025-05-20T19:29:33.269863Z",
+  "args": [
+    "--WandDB"
+  ],
+  "program": "/Users/lilshoe/Library/Mobile Documents/com~apple~CloudDocs/Politecnico Torino/Anno 2024-2025/Secondo Semestre/Machine Learning and Deep Learning/Progetto /Project_Codes/rl_project/train_sb3.py",
+  "codePath": "train_sb3.py",
+  "git": {
+    "remote": "https://github.com/Mastr0203/rl_project.git",
+    "commit": "f482a4cfebfdc66fba770eb56f8e0014c45a5a98"
+  },
+  "email": "brianmorales019@gmail.com",
+  "root": "/Users/lilshoe/Library/Mobile Documents/com~apple~CloudDocs/Politecnico Torino/Anno 2024-2025/Secondo Semestre/Machine Learning and Deep Learning/Progetto /Project_Codes/rl_project",
+  "host": "MAC.station",
+  "executable": "/Users/lilshoe/miniconda3/envs/mldl/bin/python3",
+  "codePathLocal": "train_sb3.py",
+  "cpu_count": 12,
+  "cpu_count_logical": 12,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "168823902208"
+    },
+    "/System/Volumes/Data": {
+      "total": "494384795648",
+      "used": "168823902208"
+    }
+  },
+  "memory": {
+    "total": "25769803776"
+  },
+  "cpu": {
+    "count": 12,
+    "countLogical": 12
+  },
+  "apple": {
+    "name": "Apple M4 Pro",
+    "ecpuCores": 4,
+    "pcpuCores": 8,
+    "gpuCores": 16,
+    "memoryGb": 24,
+    "ramTotalBytes": "25769803776"
+  }
+}
