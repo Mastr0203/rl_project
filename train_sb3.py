@@ -40,7 +40,7 @@ from stable_baselines3.common.env_util import make_vec_env
 # Import custom Hopper environments (register on import)
 from env.custom_hopper import *  # noqa: F401,F403
 
-def make_model_name(algo: str, hypers: dict, timesteps: int, counter: int = None) -> str:
+def make_model_name(algo: str, hypers: dict, timesteps: int,train_domain:str,test_domain:str,counter: int = None) -> str:
     """
     Restituisce un nome di file basato su:
       - nome algoritmo (ppo / sac)
@@ -52,20 +52,22 @@ def make_model_name(algo: str, hypers: dict, timesteps: int, counter: int = None
     """
     parts = [ algo.lower() ]
     # i parametri che di solito modifichi
-    parts.append(f"lr{hypers['learning_rate']:.0e}")
-    parts.append(f"bs{hypers['batch_size']}")
+    #parts.append(f"lr{hypers['learning_rate']:.0e}")
+    #parts.append(f"bs{hypers['batch_size']}")
     if algo == "PPO":
-        parts.append(f"ns{hypers['n_steps']}")
-    parts.append(f"ts{timesteps//1000}k")  # es. ts100k, ts1000k
-    if counter is not None:
-        parts.append(f"run{counter}")
+        parts.append(f"{train_domain}")
+        parts.append(f"{test_domain}")
+        #parts.append(f"ns{hypers['n_steps']}")
+    #parts.append(f"ts{timesteps//1000}k")  # es. ts100k, ts1000k
+    #if counter is not None:
+        #parts.append(f"run{counter}")
     name = "_".join(parts) + ".zip"
     return name
 
 # -----------------------------
 # 1. Hyperparameters
 # -----------------------------
-total_timesteps = 500_000  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
+total_timesteps = 1_000_000  # è il conteggio complessivo di passi‐ambiente (ossia di (state, action, reward))
                             #Ho settato 200_000 per tuning, mettere 1_000_000 per training
 
 COMMON_HYPERS = {
@@ -171,7 +173,7 @@ def create_callbacks(n_steps: int,
                 **COMMON_HYPERS,
                 **ALG_HYPERS[args.algo],
             },
-            name= f"{args.algo}-{args.train_domain}", # personalizziamo il nome es. PPO-Source : Si potrebbe poi aggiungere per il Tuning nomi diversi
+            name= f"{args.algo}-{args.train_domain}--{args.test_domain}", # personalizziamo il nome es. PPO-Source : Si potrebbe poi aggiungere per il Tuning nomi diversi
             sync_tensorboard=True, 
             monitor_gym=True,
         )
@@ -258,7 +260,7 @@ def main():
     existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
     counter = len(existing) + 1
 
-    model_filename = make_model_name(algo, hypers, total_timesteps, counter)
+    model_filename = make_model_name(algo, hypers, total_timesteps, counter,args.train_domain,args.test_domain)
    
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),
