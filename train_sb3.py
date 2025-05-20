@@ -40,7 +40,7 @@ from stable_baselines3.common.env_util import make_vec_env
 # Import custom Hopper environments (register on import)
 from env.custom_hopper import *  # noqa: F401,F403
 
-def make_model_name(algo: str, hypers: dict, timesteps: int,train_domain:str,test_domain:str,counter: int = None) -> str:
+def make_model_name(algo: str, hypers: dict, timesteps: int,train_domain:str,test_domain:str,udr:str,counter: int = None) -> str:
     """
     Restituisce un nome di file basato su:
       - nome algoritmo (ppo / sac)
@@ -57,6 +57,8 @@ def make_model_name(algo: str, hypers: dict, timesteps: int,train_domain:str,tes
     if algo == "PPO":
         parts.append(f"{train_domain}")
         parts.append(f"{test_domain}")
+        if udr:
+            parts.append(f"udr")
         #parts.append(f"ns{hypers['n_steps']}")
     #parts.append(f"ts{timesteps//1000}k")  # es. ts100k, ts1000k
     #if counter is not None:
@@ -188,7 +190,7 @@ def create_callbacks(n_steps: int,
     
     return callbacks
 
-def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_timesteps, callbacks, UDR:bool):
+def train_model(algo:str, hypers:dict,train_domain:str,test_domain:str, total_timesteps, callbacks, UDR:bool):
     if algo == "PPO":
         train_env = make_vec_env(lambda: make_env(train_domain, udr=UDR), n_envs=8)
     else:
@@ -260,7 +262,7 @@ def main():
     existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
     counter = len(existing) + 1
 
-    model_filename = make_model_name(algo, hypers, total_timesteps, counter,args.train_domain,args.test_domain)
+    model_filename = make_model_name(algo, hypers, total_timesteps,args.train_domain,args.test_domain,args.UDR,counter)
    
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),
@@ -277,6 +279,7 @@ def main():
 
     # save final
     model.save(os.path.join(save_dir, model_filename)) # salva pesi finali, ottimizzatori, parametri
+    print(f"Final training ({algo}) on {args.train_domain} env: mean_reward={mean_reward:.2f} +/- {std_reward:.2f}")
     print(f"Model saved as {model_filename}")
 
     # final eval
@@ -284,7 +287,7 @@ def main():
     # Il risultato mean_reward è quindi la ricompensa media che ottieni appena trasferisci la policy “source”
     # sul dominio “target” senza alcun adattamento
     eval_env.reset(seed=42)
-    mean_reward, std_reward = evaluate_policy(  # Calcola media e deviazione della somma di ricompense per episodio
+    mean_reward_eval, std_reward_eval = evaluate_policy(  # Calcola media e deviazione della somma di ricompense per episodio
         model,
         eval_env,
         n_eval_episodes=50,
@@ -292,7 +295,7 @@ def main():
         render=False,
         warn=False,  # # opzionale: sopprime warning su env non wrappers
     )
-    print(f"Final evaluation ({algo}) on target env: mean_reward={mean_reward:.2f} +/- {std_reward:.2f}")
+    print(f"Final evaluation ({algo}) on {args.target_domain} env: mean_reward={mean_reward_eval:.2f} +/- {std_reward_eval:.2f}")
 
     # rimuove completamente la cartella checkpoints/
     ckpt_dir = "./checkpoints"

@@ -1,0 +1,16 @@
+{"time":"2025-05-20T18:21:55.249421+02:00","level":"INFO","msg":"stream: starting","core version":"0.19.11","symlink path":"/Users/lilshoe/Library/Mobile Documents/com~apple~CloudDocs/Politecnico Torino/Anno 2024-2025/Secondo Semestre/Machine Learning and Deep Learning/Progetto /Project_Codes/rl_project/wandb/run-20250520_182155-n11ps8w0/logs/debug-core.log"}
+{"time":"2025-05-20T18:21:55.584366+02:00","level":"INFO","msg":"created new stream","id":"n11ps8w0"}
+{"time":"2025-05-20T18:21:55.584404+02:00","level":"INFO","msg":"stream: started","id":"n11ps8w0"}
+{"time":"2025-05-20T18:21:55.584411+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:21:55.584442+02:00","level":"INFO","msg":"sender: started","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:21:55.584469+02:00","level":"INFO","msg":"handler: started","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:21:55.827241+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-05-20T18:22:06.473862+02:00","level":"INFO","msg":"tensorboard: no root directory after 10 seconds, using working directory"}
+{"time":"2025-05-20T18:34:49.125628+02:00","level":"INFO","msg":"stream: closing","id":"n11ps8w0"}
+{"time":"2025-05-20T18:34:49.125663+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-05-20T18:34:49.12569+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-05-20T18:34:50.430579+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-05-20T18:34:50.783301+02:00","level":"INFO","msg":"handler: closed","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:34:50.783314+02:00","level":"INFO","msg":"sender: closed","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:34:50.783315+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"n11ps8w0"}
+{"time":"2025-05-20T18:34:50.783463+02:00","level":"INFO","msg":"stream: closed","id":"n11ps8w0"}
