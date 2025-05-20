@@ -75,11 +75,11 @@ COMMON_HYPERS = {
 
 ALG_HYPERS = {
     "PPO": {
-        "learning_rate": 3e-4,  # testare 1e-4 e 5e-4
-        "batch_size": 64,  # suddivisione del batch in minibatch per più epoch
-        "n_steps": 2048,  # ogni quante interazioni con l’ambiente SB3 calcola un batch per il gradient-update
+        "learning_rate": 5e-4,  # testare 1e-4 e 5e-4
+        "batch_size": 128,  # suddivisione del batch in minibatch per più epoch
+        "n_steps": 1024,  # ogni quante interazioni con l’ambiente SB3 calcola un batch per il gradient-update
         "clip_range": 0.2,
-        "ent_coef": 0.0,  # Entropy coefficient for the loss calculation    0.05
+        "ent_coef": 0.05,  # Entropy coefficient for the loss calculation    0.05
     },
     "SAC": {
         "learning_rate": 3e-4,              # Può essere tunato: 1e-4, 5e-4, 1e-3
