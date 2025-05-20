@@ -96,9 +96,12 @@ ALG_HYPERS = {
 # -----------------------------
 # 2. Environment setup
 # -----------------------------
-def make_env(domain: str) -> gym.Env:
+def make_env(domain: str, udr: bool = False) -> gym.Env:
     env_id = f"CustomHopper-{domain}-v0"
-    return gym.make(env_id)
+    env = gym.make(env_id)
+    if hasattr(env.unwrapped, "udr_enabled"):       #hasattr is used to call the argument "udr" with getatt
+        env.unwrapped.udr_enabled = udr             #in the custom_hopper
+    return env
 
 # -----------------------------
 # 3. Callbacks
@@ -183,12 +186,12 @@ def create_callbacks(n_steps: int,
     
     return callbacks
 
-def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_timesteps, callbacks):
+def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_timesteps, callbacks, UDR:bool):
     if algo == "PPO":
-        train_env = make_vec_env(lambda: make_env(train_domain), n_envs=8)  # accelera e stabilizza il learning passando
-    else:  # SAC
-        train_env = make_env(train_domain)
-    eval_env = make_env(test_domain)
+        train_env = make_vec_env(lambda: make_env(train_domain, udr=UDR), n_envs=8)
+    else:
+        train_env = make_env(train_domain, udr=UDR)
+    eval_env = make_env(test_domain, udr=False)
 
     # TRAIN
     # 1. Ciclo principale:
@@ -217,7 +220,8 @@ def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_t
     )
     end = time.time() # a che serve?
     
-
+    if UDR:
+        print("Training with Uniform Domain Randomization (UDR) enabled.")
     eval_env.reset(seed=42)
     mean_reward, std_reward = evaluate_policy(  # Calcola media e deviazione della somma di ricompense per episodio
         model,
@@ -235,11 +239,12 @@ def train_model(algo:str, hypers:dict, train_domain:str,test_domain:str, total_t
 # -----------------------------
 def main():
     parser = argparse.ArgumentParser(description="Train PPO or SAC on CustomHopper")
-    parser.add_argument("--algo", choices=["PPO", "SAC"], default="SAC",
+    parser.add_argument("--algo", choices=["PPO", "SAC"], default="PPO",
                         help="Algorithm to use: PPO or SAC")
     parser.add_argument("--train_domain", choices=["source", "target"], default="source", help="Domain to train on [source, target]")
     parser.add_argument("--test_domain", choices=["source", "target"], default="target", help="Domain to test on [source, target]")
     parser.add_argument("--WandDB", action="store_true", help="Use WandDB Callback")
+    parser.add_argument("--UDR", action="store_true", default=False)
     args = parser.parse_args()
     algo = args.algo
 
@@ -265,7 +270,8 @@ def main():
 
 #    print(f"Training time for {hypers['total_timesteps']} steps: {end - start:.2f} seconds")
 
-    mean_reward, std_reward, model = train_model(algo, hypers, args.train_domain, args.test_domain, total_timesteps, callbacks)
+    mean_reward, std_reward, model = train_model(algo, hypers, args.train_domain, 
+                                                 args.test_domain, total_timesteps, callbacks, args.UDR)
 
     # save final
     model.save(os.path.join(save_dir, model_filename)) # salva pesi finali, ottimizzatori, parametri

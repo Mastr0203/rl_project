@@ -56,6 +56,7 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
 
         # --------------------------------------------------------------- #
         self.original_masses = np.copy(self.model.body_mass[1:])
+        self.udr_enabled = False  # Disabilitato di default
 
         if domain == "source":          # 30 % lighter torso
             self.model.body_mass[1] *= 0.7
@@ -67,14 +68,19 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
     def set_random_parameters(self) -> None:
         self.set_parameters(self.sample_parameters())
 
-    def sample_parameters(self) -> np.ndarray:
-        raise NotImplementedError("Implement domain‑randomization sampling logic")
+    def sample_parameters(self) -> np.ndarray:          #UDR Implementation
+        masses = self.original_masses.copy()
+        # Indici: 0 = torso (fissato), 1 = thigh, 2 = leg, 3 = foot
+        masses[1] = masses[1] * np.random.uniform(0.8, 1.2)  # thigh
+        masses[2] = masses[2] * np.random.uniform(0.8, 1.2)  # leg
+        masses[3] = masses[3] * np.random.uniform(0.8, 1.2)  # foot
+        return masses
 
     def get_parameters(self) -> np.ndarray:
         return np.asarray(self.model.body_mass[1:])
 
-    def set_parameters(self, masses: np.ndarray) -> None:
-        self.model.body_mass[1:] = masses
+    def set_parameters(self, masses: np.ndarray) -> None:       #Masses retrieved form sample_parameters
+        self.model.body_mass[1:] = masses                       #[1:] because 0 is tors mass (don't touch it)
 
     # ------------------------------------------------------------------ #
     # Core API                                                           #
@@ -112,8 +118,8 @@ class CustomHopper(MujocoEnv, utils.EzPickle):
         )
         self.set_state(qpos, qvel)
 
-        # (opzionale) domain‑randomization delle masse:
-        # self.set_random_parameters()
+        if getattr(self, "udr_enabled", False):         #If udr is enabled, set random parameters and return this
+            self.set_random_parameters()                #Otherwise returns defaults. False is the default.
 
         return self._get_obs()
 
