@@ -254,6 +254,7 @@ def main():
 
      # create env
     eval_env = make_env(args.test_domain)
+    train_env_for_eval = make_env(args.train_domain)
 
     # collect hyperparams
     hypers = {**COMMON_HYPERS, **ALG_HYPERS[algo]}
@@ -267,7 +268,7 @@ def main():
     callbacks = create_callbacks(
     n_steps=hypers.get("n_steps", 1),
     args=args,
-    eval_env=eval_env,
+    eval_env=train_env_for_eval,
     patience=5,     # numero di valutazioni consecutive senza improvement
     min_evals=10    # numero minimo di valutazioni prima di iniziare a stoppare
 )
