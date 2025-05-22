@@ -65,7 +65,7 @@ def grid_search(algo, param_grid, train_domain, test_domain,total_timesteps):
                     combo["buffer_size"] = int(combo["buffer_size"])
                 if "learning_starts" in combo:
                     combo["learning_starts"] = int(combo["learning_starts"])
-                reward, std_reward, model = train_sb3(algo, combo, train_domain, test_domain,total_timesteps, callbacks=None)
+                reward, std_reward, model = train_sb3(algo, combo, train_domain, test_domain,total_timesteps)
             else:
                 raise ValueError("Unsupported algorithm")
 

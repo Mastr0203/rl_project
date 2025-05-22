@@ -17,9 +17,7 @@ import wandb
 import argparse
 import gymnasium as gym
 from stable_baselines3 import PPO, SAC 
-from stable_baselines3.common.callbacks import (
-    EvalCallback,
-)
+from callbacks import EvalCallback
 
 from stable_baselines3.common.evaluation import evaluate_policy  
 from stable_baselines3.common.env_util import make_vec_env
