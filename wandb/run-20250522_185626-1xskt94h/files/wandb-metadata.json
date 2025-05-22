@@ -1,0 +1,47 @@
+{
+  "os": "macOS-14.4.1-arm64-arm-64bit",
+  "python": "CPython 3.11.11",
+  "startedAt": "2025-05-22T16:56:26.519841Z",
+  "args": [
+    "--WandDB"
+  ],
+  "program": "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py",
+  "codePath": "train_sb3.py",
+  "git": {
+    "remote": "https://github.com/Mastr0203/rl_project.git",
+    "commit": "0d86824f83e3d9874fbb6150968a654f21f22e79"
+  },
+  "email": "brianmorales019@gmail.com",
+  "root": "/Users/brian/Documents/GitHub/Project_RL/rl_project",
+  "host": "Air-di-Brian.station",
+  "executable": "/Users/brian/miniconda3/envs/RL/bin/python",
+  "codePathLocal": "train_sb3.py",
+  "cpu_count": 8,
+  "cpu_count_logical": 8,
+  "disk": {
+    "/": {
+      "total": "494384795648",
+      "used": "315319156736"
+    },
+    "/System/Volumes/Data": {
+      "total": "494384795648",
+      "used": "315319156736"
+    }
+  },
+  "memory": {
+    "total": "8589934592"
+  },
+  "cpu": {
+    "count": 8,
+    "countLogical": 8
+  },
+  "apple": {
+    "name": "Apple M1",
+    "ecpuCores": 4,
+    "pcpuCores": 4,
+    "gpuCores": 8,
+    "memoryGb": 8,
+    "swapTotalBytes": "8589934592",
+    "ramTotalBytes": "8589934592"
+  }
+}

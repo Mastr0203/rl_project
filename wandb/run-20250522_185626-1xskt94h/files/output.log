@@ -1,0 +1,292 @@
+/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/evaluation.py:67: UserWarning: Evaluation environment is not wrapped with a ``Monitor`` wrapper. This may result in reporting modified episode lengths and rewards, if other wrappers happen to modify these. Consider wrapping environment first with ``Monitor`` wrapper.
+  warnings.warn(
+Eval num_timesteps=384, episode_reward=83.84 +/- 3.11
+Episode length: 89.40 +/- 2.24
+New best mean reward!
+/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/evaluation.py:67: UserWarning: Evaluation environment is not wrapped with a ``Monitor`` wrapper. This may result in reporting modified episode lengths and rewards, if other wrappers happen to modify these. Consider wrapping environment first with ``Monitor`` wrapper.
+  warnings.warn(
+Eval num_timesteps=768, episode_reward=83.69 +/- 6.94
+Episode length: 89.60 +/- 6.34
+Eval num_timesteps=1152, episode_reward=83.91 +/- 1.48
+Episode length: 90.40 +/- 1.74
+New best mean reward!
+Eval num_timesteps=1536, episode_reward=80.74 +/- 3.23
+Episode length: 87.40 +/- 3.26
+Eval num_timesteps=1920, episode_reward=84.28 +/- 4.50
+Episode length: 90.20 +/- 4.17
+New best mean reward!
+Eval num_timesteps=2304, episode_reward=84.17 +/- 3.44
+Episode length: 90.20 +/- 3.60
+Eval num_timesteps=2688, episode_reward=87.50 +/- 1.94
+Episode length: 92.80 +/- 1.60
+New best mean reward!
+Eval num_timesteps=3072, episode_reward=79.95 +/- 4.90
+Episode length: 85.80 +/- 4.35
+Eval num_timesteps=3456, episode_reward=83.53 +/- 6.11
+Episode length: 88.80 +/- 4.96
+Eval num_timesteps=3840, episode_reward=83.01 +/- 5.30
+Episode length: 88.60 +/- 4.84
+Eval num_timesteps=4224, episode_reward=81.20 +/- 1.86
+Episode length: 88.80 +/- 1.72
+Eval num_timesteps=4608, episode_reward=87.55 +/- 2.23
+Episode length: 93.20 +/- 1.47
+New best mean reward!
+Eval num_timesteps=4992, episode_reward=78.32 +/- 5.04
+Episode length: 84.60 +/- 5.12
+Eval num_timesteps=5376, episode_reward=85.53 +/- 2.06
+Episode length: 90.80 +/- 0.98
+Eval num_timesteps=5760, episode_reward=82.93 +/- 5.11
+Episode length: 88.80 +/- 3.97
+Eval num_timesteps=6144, episode_reward=83.96 +/- 7.04
+Episode length: 89.40 +/- 5.68
+Eval num_timesteps=6528, episode_reward=84.40 +/- 1.76
+Episode length: 90.60 +/- 1.85
+Eval num_timesteps=6912, episode_reward=82.42 +/- 4.75
+Episode length: 88.80 +/- 4.53
+Eval num_timesteps=7296, episode_reward=80.27 +/- 4.75
+Episode length: 86.00 +/- 4.05
+Eval num_timesteps=7680, episode_reward=83.10 +/- 7.90
+Episode length: 87.60 +/- 6.89
+Eval num_timesteps=8064, episode_reward=82.78 +/- 4.02
+Episode length: 88.80 +/- 3.49
+Eval num_timesteps=8448, episode_reward=85.02 +/- 0.72
+Episode length: 56.20 +/- 0.40
+Eval num_timesteps=8832, episode_reward=85.54 +/- 2.28
+Episode length: 56.40 +/- 1.36
+Eval num_timesteps=9216, episode_reward=84.85 +/- 1.43
+Episode length: 56.00 +/- 0.89
+Eval num_timesteps=9600, episode_reward=84.59 +/- 2.16
+Episode length: 55.80 +/- 1.33
+Eval num_timesteps=9984, episode_reward=85.19 +/- 1.20
+Episode length: 56.20 +/- 0.75
+Eval num_timesteps=10368, episode_reward=85.06 +/- 1.21
+Episode length: 56.20 +/- 0.75
+Eval num_timesteps=10752, episode_reward=84.73 +/- 1.79
+Episode length: 56.00 +/- 1.10
+Eval num_timesteps=11136, episode_reward=86.06 +/- 0.62
+Episode length: 56.80 +/- 0.40
+Eval num_timesteps=11520, episode_reward=85.41 +/- 1.67
+Episode length: 56.40 +/- 1.02
+Eval num_timesteps=11904, episode_reward=84.47 +/- 1.33
+Episode length: 55.80 +/- 0.75
+Eval num_timesteps=12288, episode_reward=85.80 +/- 0.93
+Episode length: 56.60 +/- 0.49
+Eval num_timesteps=12672, episode_reward=85.09 +/- 1.39
+Episode length: 56.20 +/- 0.75
+Eval num_timesteps=13056, episode_reward=85.31 +/- 1.38
+Episode length: 56.40 +/- 0.80
+Eval num_timesteps=13440, episode_reward=84.59 +/- 1.35
+Episode length: 55.80 +/- 0.75
+Eval num_timesteps=13824, episode_reward=84.06 +/- 1.73
+Episode length: 55.60 +/- 1.02
+Eval num_timesteps=14208, episode_reward=85.80 +/- 0.71
+Episode length: 56.60 +/- 0.49
+Eval num_timesteps=14592, episode_reward=84.17 +/- 1.35
+Episode length: 55.60 +/- 0.80
+Eval num_timesteps=14976, episode_reward=85.79 +/- 1.32
+Episode length: 56.60 +/- 0.80
+Eval num_timesteps=15360, episode_reward=84.99 +/- 1.64
+Episode length: 56.20 +/- 0.98
+Eval num_timesteps=15744, episode_reward=84.09 +/- 1.85
+Episode length: 55.60 +/- 1.20
+Eval num_timesteps=16128, episode_reward=86.13 +/- 1.26
+Episode length: 56.80 +/- 0.75
+Eval num_timesteps=16512, episode_reward=72.56 +/- 1.57
+Episode length: 44.40 +/- 0.80
+Eval num_timesteps=16896, episode_reward=72.89 +/- 0.95
+Episode length: 44.60 +/- 0.49
+Eval num_timesteps=17280, episode_reward=71.76 +/- 0.28
+Episode length: 44.00 +/- 0.00
+Eval num_timesteps=17664, episode_reward=74.00 +/- 1.54
+Episode length: 45.20 +/- 0.75
+Eval num_timesteps=18048, episode_reward=72.51 +/- 0.85
+Episode length: 44.40 +/- 0.49
+Eval num_timesteps=18432, episode_reward=72.17 +/- 0.65
+Episode length: 44.20 +/- 0.40
+Eval num_timesteps=18816, episode_reward=73.60 +/- 1.19
+Episode length: 45.00 +/- 0.63
+Eval num_timesteps=19200, episode_reward=71.68 +/- 1.21
+Episode length: 44.00 +/- 0.63
+Eval num_timesteps=19584, episode_reward=72.03 +/- 0.79
+Episode length: 44.20 +/- 0.40
+Eval num_timesteps=19968, episode_reward=74.12 +/- 1.43
+Episode length: 45.20 +/- 0.75
+Eval num_timesteps=20352, episode_reward=72.66 +/- 1.60
+Episode length: 44.40 +/- 0.80
+Eval num_timesteps=20736, episode_reward=72.85 +/- 0.84
+Episode length: 44.60 +/- 0.49
+Eval num_timesteps=21120, episode_reward=72.89 +/- 1.48
+Episode length: 44.60 +/- 0.80
+Eval num_timesteps=21504, episode_reward=73.40 +/- 1.50
+Episode length: 44.80 +/- 0.75
+Eval num_timesteps=21888, episode_reward=73.33 +/- 1.27
+Episode length: 44.80 +/- 0.75
+Eval num_timesteps=22272, episode_reward=72.80 +/- 0.95
+Episode length: 44.60 +/- 0.49
+Eval num_timesteps=22656, episode_reward=73.70 +/- 1.54
+Episode length: 45.00 +/- 0.89
+Eval num_timesteps=23040, episode_reward=73.66 +/- 1.13
+Episode length: 45.00 +/- 0.63
+Eval num_timesteps=23424, episode_reward=72.51 +/- 1.46
+Episode length: 44.40 +/- 0.80
+Eval num_timesteps=23808, episode_reward=72.47 +/- 1.03
+Episode length: 44.40 +/- 0.49
+Eval num_timesteps=24192, episode_reward=72.56 +/- 0.96
+Episode length: 44.40 +/- 0.49
+Eval num_timesteps=24576, episode_reward=72.89 +/- 0.86
+Episode length: 44.60 +/- 0.49
+Eval num_timesteps=24960, episode_reward=64.41 +/- 0.98
+Episode length: 39.40 +/- 0.49
+Eval num_timesteps=25344, episode_reward=65.52 +/- 1.21
+Episode length: 40.00 +/- 0.63
+Eval num_timesteps=25728, episode_reward=65.14 +/- 1.52
+Episode length: 39.80 +/- 0.75
+Eval num_timesteps=26112, episode_reward=66.38 +/- 0.76
+Episode length: 40.60 +/- 0.49
+Eval num_timesteps=26496, episode_reward=65.83 +/- 1.32
+Episode length: 40.20 +/- 0.75
+Eval num_timesteps=26880, episode_reward=65.15 +/- 1.47
+Episode length: 39.80 +/- 0.75
+Eval num_timesteps=27264, episode_reward=65.54 +/- 1.06
+Episode length: 40.00 +/- 0.63
+Eval num_timesteps=27648, episode_reward=65.89 +/- 1.34
+Episode length: 40.20 +/- 0.75
+Eval num_timesteps=28032, episode_reward=64.71 +/- 0.98
+Episode length: 39.60 +/- 0.49
+Eval num_timesteps=28416, episode_reward=64.76 +/- 0.79
+Episode length: 39.60 +/- 0.49
+Eval num_timesteps=28800, episode_reward=65.70 +/- 1.32
+Episode length: 40.20 +/- 0.75
+Eval num_timesteps=29184, episode_reward=64.74 +/- 1.90
+Episode length: 39.60 +/- 1.02
+Eval num_timesteps=29568, episode_reward=65.39 +/- 1.18
+Episode length: 40.00 +/- 0.63
+Eval num_timesteps=29952, episode_reward=66.16 +/- 0.90
+Episode length: 40.40 +/- 0.49
+Eval num_timesteps=30336, episode_reward=65.75 +/- 0.69
+Episode length: 40.20 +/- 0.40
+Eval num_timesteps=30720, episode_reward=66.07 +/- 1.55
+Episode length: 40.40 +/- 0.80
+Eval num_timesteps=31104, episode_reward=65.11 +/- 0.77
+Episode length: 39.80 +/- 0.40
+Eval num_timesteps=31488, episode_reward=65.12 +/- 1.34
+Episode length: 39.80 +/- 0.75
+Eval num_timesteps=31872, episode_reward=64.78 +/- 1.43
+Episode length: 39.60 +/- 0.80
+Eval num_timesteps=32256, episode_reward=65.88 +/- 1.26
+Episode length: 40.20 +/- 0.75
+Eval num_timesteps=32640, episode_reward=65.02 +/- 0.71
+Episode length: 39.80 +/- 0.40
+Eval num_timesteps=33024, episode_reward=164.33 +/- 3.34
+Episode length: 78.60 +/- 1.36
+New best mean reward!
+Eval num_timesteps=33408, episode_reward=163.71 +/- 2.74
+Episode length: 78.40 +/- 1.02
+Eval num_timesteps=33792, episode_reward=163.31 +/- 3.62
+Episode length: 78.20 +/- 1.47
+Eval num_timesteps=34176, episode_reward=165.16 +/- 2.29
+Episode length: 79.00 +/- 0.89
+New best mean reward!
+Eval num_timesteps=34560, episode_reward=165.36 +/- 2.72
+Episode length: 79.00 +/- 1.10
+New best mean reward!
+Eval num_timesteps=34944, episode_reward=161.26 +/- 5.54
+Episode length: 77.40 +/- 2.24
+Eval num_timesteps=35328, episode_reward=163.51 +/- 4.45
+Episode length: 78.20 +/- 1.72
+Eval num_timesteps=35712, episode_reward=163.77 +/- 3.87
+Episode length: 78.40 +/- 1.50
+Eval num_timesteps=36096, episode_reward=165.42 +/- 3.24
+Episode length: 79.00 +/- 1.26
+New best mean reward!
+Eval num_timesteps=36480, episode_reward=165.81 +/- 3.34
+Episode length: 79.20 +/- 1.33
+New best mean reward!
+Eval num_timesteps=36864, episode_reward=160.78 +/- 2.52
+Episode length: 77.20 +/- 0.98
+Eval num_timesteps=37248, episode_reward=165.42 +/- 3.16
+Episode length: 79.00 +/- 1.26
+Eval num_timesteps=37632, episode_reward=165.93 +/- 2.40
+Episode length: 79.20 +/- 0.98
+New best mean reward!
+Eval num_timesteps=38016, episode_reward=163.04 +/- 2.76
+Episode length: 78.00 +/- 1.10
+Eval num_timesteps=38400, episode_reward=162.32 +/- 1.76
+Episode length: 77.80 +/- 0.75
+Eval num_timesteps=38784, episode_reward=164.35 +/- 2.59
+Episode length: 78.60 +/- 1.02
+Eval num_timesteps=39168, episode_reward=163.84 +/- 3.63
+Episode length: 78.40 +/- 1.50
+Eval num_timesteps=39552, episode_reward=162.42 +/- 5.35
+Episode length: 77.80 +/- 2.14
+Eval num_timesteps=39936, episode_reward=163.74 +/- 2.54
+Episode length: 78.40 +/- 1.02
+Eval num_timesteps=40320, episode_reward=164.89 +/- 2.86
+Episode length: 78.80 +/- 1.17
+Eval num_timesteps=40704, episode_reward=169.31 +/- 2.39
+Episode length: 80.60 +/- 1.02
+New best mean reward!
+Eval num_timesteps=41088, episode_reward=220.71 +/- 0.88
+Episode length: 97.80 +/- 0.40
+New best mean reward!
+Eval num_timesteps=41472, episode_reward=219.66 +/- 1.12
+Episode length: 97.40 +/- 0.49
+Eval num_timesteps=41856, episode_reward=220.00 +/- 1.06
+Episode length: 97.40 +/- 0.49
+Eval num_timesteps=42240, episode_reward=218.94 +/- 1.99
+Episode length: 97.00 +/- 0.89
+Eval num_timesteps=42624, episode_reward=219.87 +/- 0.98
+Episode length: 97.40 +/- 0.49
+Eval num_timesteps=43008, episode_reward=220.21 +/- 1.20
+Episode length: 97.60 +/- 0.49
+Eval num_timesteps=43392, episode_reward=220.55 +/- 1.69
+Episode length: 97.80 +/- 0.75
+Eval num_timesteps=43776, episode_reward=220.69 +/- 1.73
+Episode length: 97.80 +/- 0.75
+Eval num_timesteps=44160, episode_reward=219.81 +/- 1.07
+Episode length: 97.40 +/- 0.49
+Traceback (most recent call last):
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 239, in <module>
+    main()
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 230, in main
+    mean_reward, std_reward = train_model(algo, hypers, args.train_domain,
+                             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/train_sb3.py", line 180, in train_model
+    model.learn(
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/ppo/ppo.py", line 311, in learn
+    return super().learn(
+           ^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 324, in learn
+    continue_training = self.collect_rollouts(self.env, callback, self.rollout_buffer, n_rollout_steps=self.n_steps)
+                        ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/on_policy_algorithm.py", line 218, in collect_rollouts
+    new_obs, rewards, dones, infos = env.step(clipped_actions)
+                                     ^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/vec_env/base_vec_env.py", line 222, in step
+    return self.step_wait()
+           ^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/vec_env/dummy_vec_env.py", line 59, in step_wait
+    obs, self.buf_rews[env_idx], terminated, truncated, self.buf_infos[env_idx] = self.envs[env_idx].step(  # type: ignore[assignment]
+                                                                                  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/stable_baselines3/common/monitor.py", line 94, in step
+    observation, reward, terminated, truncated, info = self.env.step(action)
+                                                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/wrappers/common.py", line 125, in step
+    observation, reward, terminated, truncated, info = self.env.step(action)
+                                                       ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/wrappers/common.py", line 393, in step
+    return super().step(action)
+           ^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/core.py", line 327, in step
+    return self.env.step(action)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/wrappers/common.py", line 285, in step
+    return self.env.step(action)
+           ^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/brian/Documents/GitHub/Project_RL/rl_project/env/custom_hopper.py", line 93, in step
+    self.do_simulation(action, self.frame_skip)
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/envs/mujoco/mujoco_env.py", line 200, in do_simulation
+    self._step_mujoco_simulation(ctrl, n_frames)
+  File "/Users/brian/miniconda3/envs/RL/lib/python3.11/site-packages/gymnasium/envs/mujoco/mujoco_env.py", line 148, in _step_mujoco_simulation
+    mujoco.mj_step(self.model, self.data, nstep=n_frames)
+KeyboardInterrupt

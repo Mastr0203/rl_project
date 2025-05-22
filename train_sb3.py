@@ -17,7 +17,9 @@ import wandb
 import argparse
 import gymnasium as gym
 from stable_baselines3 import PPO, SAC 
-from callbacks import EvalCallback
+
+#from callbacks2 import EvalCallback
+from stable_baselines3.common.callbacks import EvalCallback
 
 from stable_baselines3.common.evaluation import evaluate_policy  
 from stable_baselines3.common.env_util import make_vec_env
@@ -29,21 +31,22 @@ def make_model_name(algo: str,train_domain:str,test_domain:str,udr:str,counter: 
     """
     Restituisce un nome di file basato su:
       - nome algoritmo (ppo / sac)
-      - learning_rate
-      - batch_size
-      - n_steps (solo per PPO)
-      - numero di timesteps di training
+      - udr
       - opzionale counter incrementale
     """
-    parts = [ algo.lower() ]
-    # i parametri che di solito modifichi
-    parts.append(f"{train_domain}")
-    parts.append(f"{test_domain}")
+    name = f"{algo}_{train_domain}_{test_domain}"
+    # parts = [ algo.lower() ]
+    # # i parametri che di solito modifichi
+    # parts.append(f"{train_domain}")
+    # parts.append(f"{test_domain}")
     if udr:
-        parts.append(f"udr")
+        name += "_udr"
+     #   parts.append(f"udr")
     if counter != None:
-        parts.append(str(counter))
-    name = "_".join(parts) + ".zip"
+        name += "_" + str(counter)
+      #  parts.append(str(counter))
+ #   name += ".zip"
+#    name = "_".join(parts) + ".zip"
     
     return name
 
@@ -94,13 +97,7 @@ def make_env(domain: str, udr: bool = False) -> gym.Env:
 # -----------------------------
 """La funzione create_callbacks(n_steps) ha lo scopo di generare e restituire due callback da passare al metodo
     model.learn(), in modo da automatizzare:
-	1.	CheckpointCallback
-	    •	Cosa fa: salva periodicamente lo stato del modello (pesi, ottimizzatori, contatore di timesteps) su
-            disco.
-	    •	Perché è utile: se l'allenamento viene interrotto (per es. crash, timeout, riavvio), puoi ripartire
-            da un ultimo salvataggio anziché ricominciare da zero. Inoltre ti permette di conservare più snapshot
-            del modello lungo il training.
-	2.	EvalCallback
+		EvalCallback
 	    •	Cosa fa: ogni tot passi di ambiente valuta il modello su un ambiente di test (qui CustomHopper-target-v0),
             calcolando la ricompensa media su alcuni episodi.
 	    •	Perché è utile:
@@ -109,18 +106,18 @@ def make_env(domain: str, udr: bool = False) -> gym.Env:
 	        •	Se ottiene un nuovo record di ricompensa media, salva quel “best model” in una cartella dedicata.
 	        •	Registra metriche (reward, std, …) in un file di log per poterle visualizzare con TensorBoard o
                 altri strumenti."""
-def create_callbacks(n_steps: int,algo,test_domain,Wandb,name):
-    best_model_path = f"./best_model"
+def create_callbacks(n_steps: int,algo, test_domain, Wandb, name):
+    best_model_path = f"./best_model/{name}"
     eval_env = make_env(test_domain)
     eval_env.reset(seed=42)
 
     eval_callback = EvalCallback(
         eval_env = eval_env,
         best_model_save_path=best_model_path,
-        name = name,
         eval_freq=50_000 // n_steps,
         deterministic=True,
-        render=False
+        render=False,
+        verbose=0    # se volete potete toglierlo, serve solo per non visualizzare tuti gli step nel tuning
     )
     callbacks = eval_callback
    
@@ -142,13 +139,13 @@ def create_callbacks(n_steps: int,algo,test_domain,Wandb,name):
     return callbacks
 
 
-def train_model(algo:str, hypers:dict,train_domain:str,test_domain:str, total_timesteps, UDR:bool, WandDB:str,filename='T'):
+def train_model(algo:str, hypers:dict,train_domain:str,test_domain:str, total_timesteps, name, UDR:bool, WandDB:bool):
     if algo == "PPO":
         train_env = make_vec_env(lambda: make_env(train_domain, udr=UDR), n_envs=8)
     else:
         train_env = make_env(train_domain, udr=UDR)
     eval_env = make_env(test_domain, udr=False)
-    name = filename.strip(".zip")
+#    name = filename.strip(".zip")
 
     # TRAIN
     # 1. Ciclo principale:
@@ -188,7 +185,8 @@ def train_model(algo:str, hypers:dict,train_domain:str,test_domain:str, total_ti
     
     if UDR:
         print("Training with Uniform Domain Randomization (UDR) enabled.")
-    best_model = PPO.load(filename)
+    filename_best = f"best_model/{name}/best_model.zip"
+    best_model = PPO.load(filename_best)
 
     eval_env.reset(seed=42)
     mean_reward, std_reward = evaluate_policy(
@@ -199,6 +197,12 @@ def train_model(algo:str, hypers:dict,train_domain:str,test_domain:str, total_ti
         render=False,
         warn=False,          #Optional
     )
+
+    if WandDB:
+        wandb.log({
+            "eval/mean_reward": mean_reward,
+            "eval/std_reward": std_reward,
+        })
 
     print(f"Training time: {end - start:.2f} seconds")
 
@@ -221,16 +225,16 @@ def main():
 
     # collect hyperparams
     hypers = {**COMMON_HYPERS, **ALG_HYPERS[algo]}
-    save_dir = "./models"
-    os.makedirs(save_dir, exist_ok=True)
-    existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
-    counter = len(existing) + 1
+    # save_dir = "./models"
+    # os.makedirs(save_dir, exist_ok=True)
+    # existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
+    # counter = len(existing) + 1
 
-    model_filename = make_model_name(algo,args.train_domain,args.test_domain,args.UDR,counter)
+    model_filename = make_model_name(algo,args.train_domain,args.test_domain,args.UDR)
     
 
     mean_reward, std_reward = train_model(algo, hypers, args.train_domain, 
-                                            args.test_domain, total_timesteps, args.UDR, args.WandDB,model_filename)
+                                            args.test_domain, total_timesteps, model_filename, args.UDR, args.WandDB)
 
     # save final
     print(f"Final training ({algo}) on {args.train_domain} env: mean_reward={mean_reward:.2f} +/- {std_reward:.2f}")
