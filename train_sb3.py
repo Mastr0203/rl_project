@@ -225,6 +225,26 @@ def main():
 
     # collect hyperparams
     hypers = {**COMMON_HYPERS, **ALG_HYPERS[algo]}
+
+    # Override PPO hyperparameters from environment variables if present
+    if algo == "PPO":
+        # Read CLIP_RANGE and ENT_COEFF from environment variables (already present)
+        clip_range_env = os.getenv("CLIP_RANGE")
+        ent_coef_env = os.getenv("ENT_COEFF")
+        if clip_range_env:
+            ALG_HYPERS["PPO"]["clip_range"] = float(clip_range_env)
+        if ent_coef_env:
+            ALG_HYPERS["PPO"]["ent_coef"] = float(ent_coef_env)
+        # Read LEARNING_RATE, BATCH_SIZE, N_STEPS from environment variables
+        lr_env = os.getenv("LEARNING_RATE")
+        bs_env = os.getenv("BATCH_SIZE")
+        nsteps_env = os.getenv("N_STEPS")
+        if lr_env:
+            ALG_HYPERS["PPO"]["learning_rate"] = float(lr_env)
+        if bs_env:
+            ALG_HYPERS["PPO"]["batch_size"] = int(bs_env)
+        if nsteps_env:
+            ALG_HYPERS["PPO"]["n_steps"] = int(nsteps_env)
     # save_dir = "./models"
     # os.makedirs(save_dir, exist_ok=True)
     # existing = [f for f in os.listdir(save_dir) if f.startswith(algo.lower()) and f.endswith(".zip")]
@@ -239,7 +259,6 @@ def main():
     # save final
     print(f"Final training ({algo}) on {args.train_domain} env: mean_reward={mean_reward:.2f} +/- {std_reward:.2f}")
     print(f"Model saved as {model_filename}")
-
 
 if __name__ == "__main__":
     main()
