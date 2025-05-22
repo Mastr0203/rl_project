@@ -1,0 +1,16 @@
+{"time":"2025-05-22T17:51:35.621827+02:00","level":"INFO","msg":"stream: starting","core version":"0.19.11","symlink path":"/Users/lilshoe/Library/Mobile Documents/com~apple~CloudDocs/Politecnico Torino/Anno 2024-2025/Secondo Semestre/Machine Learning and Deep Learning/Progetto /Project_Codes/rl_project/wandb/run-20250522_175135-9530rjsd/logs/debug-core.log"}
+{"time":"2025-05-22T17:51:35.992042+02:00","level":"INFO","msg":"created new stream","id":"9530rjsd"}
+{"time":"2025-05-22T17:51:35.992069+02:00","level":"INFO","msg":"stream: started","id":"9530rjsd"}
+{"time":"2025-05-22T17:51:35.992103+02:00","level":"INFO","msg":"writer: Do: started","stream_id":"9530rjsd"}
+{"time":"2025-05-22T17:51:35.992106+02:00","level":"INFO","msg":"handler: started","stream_id":"9530rjsd"}
+{"time":"2025-05-22T17:51:35.992107+02:00","level":"INFO","msg":"sender: started","stream_id":"9530rjsd"}
+{"time":"2025-05-22T17:51:36.283854+02:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2025-05-22T17:51:46.315935+02:00","level":"INFO","msg":"tensorboard: no root directory after 10 seconds, using working directory"}
+{"time":"2025-05-22T18:02:48.518842+02:00","level":"INFO","msg":"stream: closing","id":"9530rjsd"}
+{"time":"2025-05-22T18:02:48.518888+02:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2025-05-22T18:02:48.518909+02:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2025-05-22T18:02:49.898525+02:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2025-05-22T18:02:50.123258+02:00","level":"INFO","msg":"handler: closed","stream_id":"9530rjsd"}
+{"time":"2025-05-22T18:02:50.123303+02:00","level":"INFO","msg":"writer: Close: closed","stream_id":"9530rjsd"}
+{"time":"2025-05-22T18:02:50.123325+02:00","level":"INFO","msg":"sender: closed","stream_id":"9530rjsd"}
+{"time":"2025-05-22T18:02:50.123966+02:00","level":"INFO","msg":"stream: closed","id":"9530rjsd"}
