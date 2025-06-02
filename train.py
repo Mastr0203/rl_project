@@ -15,6 +15,7 @@ import wandb
 import torch
 import gymnasium as gym
 import numpy as np
+import os
 
 # registra gli env CustomHopper-* con le chiamate register()
 from env.custom_hopper import *  # noqa: F401,F403
@@ -31,13 +32,16 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--n-episodes", type=int, default=100_000, help="# episodi di training")
     p.add_argument("--print-every", type=int, default=20_000, help="log ogni N episodi")
     p.add_argument("--device", default="cpu", choices=["cpu", "cuda"], help="torch device")
+    p.add_argument('--n-envs', default=1, type=int, help='Select number of training envs')
     p.add_argument("--render", action="store_true", help="visualizza la GUI durante il training")
 
-    p.add_argument('--algorithm', default='REINFORCE', type=str, help='Selected Model [REINFORCE, ActorCritic]')
+    p.add_argument('--algorithm', default='REINFORCE', type=str, choices=['REINFORCE', 'ActorCritic'], help='Select the Model [REINFORCE, ActorCritic]')
     p.add_argument('--domain', default='source', choices=["source", "target"], help="Domain to train on [source, target]")
     p.add_argument("--WandDB", action="store_true", help="Use WandDB Callback")
+    p.add_argument("--save", action="store_true", help="Save the model")
 
     p.add_argument('--baseline', default='0', type=str, help="Insert a value or write 'dynamic' to state-dependent baseline")
+    p.add_argument('--AC-critic', default = 'Q', type=str, choices = ['Q', 'V'], help="Whether critic estimates Q(s,a) or V(s)")
 
     p.add_argument("--gamma", default=0.99, type = float, help="Gamma to discount future rewards")
     p.add_argument("--lr-policy", default=5e-4, type = float, help="Learning Rate for Policy Updates")
@@ -78,7 +82,18 @@ def main() -> None:
             return env
         return _init
 
-    env = AsyncVectorEnv([make_env(i) for i in range(8)])  # oppure AsyncVectorEnv
+    env = AsyncVectorEnv([make_env(i) for i in range(args.n_envs)])
+
+    def save(policy, critic, dir_path):
+        os.makedirs(dir_path, exist_ok=True)
+        counter = len(os.listdir(dir_path)) + 1
+        model_path = os.path.join(dir_path, f"model_{counter}_{args.domain}")
+        os.makedirs(model_path)
+        policy_path = os.path.join(model_path, f"policy.mdl")
+        torch.save(policy.state_dict(), policy_path)
+        if critic is not None:
+            critic_path = os.path.join(model_path, f"critic.mdl")
+            torch.save(critic.state_dict(), critic_path)
 
     print("Action space :", env.action_space)
     print("State space  :", env.observation_space)
@@ -101,12 +116,14 @@ def main() -> None:
     }
     
     args_agent = {
+        "model" : args.algorithm,
         "max_action" : max_action,
         "device" : args.device,
         "gamma" : args.gamma,
         "lr_policy" : args.lr_policy,
         "lr_critic" : args.lr_critic,
-        "baseline" : args.baseline
+        "baseline" : args.baseline,
+        "AC_critic" : args.AC_critic
     }
 
     def REINFORCE():
@@ -121,6 +138,9 @@ def main() -> None:
             args_agent["baseline"] = float(args.baseline)
         
         agent = Agent(**args_agent)
+
+        best_score = env.reward_range[0]
+        score_history = []
 
         start_time = time.time()
         for episode in range(args.n_episodes):
@@ -141,7 +161,18 @@ def main() -> None:
                         ep_returns[i] += rewards[i]
                 terminated = np.logical_or(terminated, done)
 
-            loss = agent.update_policy(args.algorithm)  # Va fuori perchè deve aggiornare ad ogni episodio
+            loss = agent.update_policy()
+
+            score_history.append(np.mean(ep_returns))
+            avg_score = np.mean(score_history[-100:])
+
+            if avg_score > best_score:
+                best_score = avg_score
+                if args.save:
+                    dir_path = 'models/REINFORCE'
+                    save(agent.policy, agent.critic, dir_path)
+
+              # Va fuori perchè deve aggiornare ad ogni episodio
 
             if args.WandDB:
             # Logging per WandB
@@ -154,7 +185,6 @@ def main() -> None:
                     "time_elapsed": time.time() - start_time,
                 })
 
-
             if args.render:
                 env.render()
 
@@ -163,24 +193,20 @@ def main() -> None:
                 print(f"[Episode {episode+1}] return = {ep_returns.mean():.2f} loss = {loss:.4f} elapsed = {elapsed:.1f}s")
                 start_time = time.time()  # resetta il timer
 
-        # salva i pesi a fine training
-        model_path = f"model_REINFORCE_{args.domain}.pth"
-        torch.save(agent.policy.state_dict(), model_path)
-        # salva il critic (se presente)
-        if agent.critic is not None:
-            model_critic = f"model_REINFORCE_{args.domain}_critic.pth"
-            torch.save(agent.critic.state_dict(), model_critic)
-        
-        if args.WandDB:
-            wandb.save(model_path)
         env.close()
 
         print(f"FINAL_RESULT: {ep_returns.mean():.2f}")
 
     def ACTORCRITIC():
+        if args.AC_critic == 'V': # critic estimates the value function
+            args_critic["action_space"] = 0 
+
         args_agent["policy"] = Policy(**args_policy)
         args_agent["critic"] = Critic(**args_critic)
         agent = Agent(**args_agent)
+
+        best_score = env.reward_range[0]
+        score_history = []
 
         start_time = time.time()
         for episode in range(args.n_episodes):
@@ -204,7 +230,17 @@ def main() -> None:
                 terminated = np.logical_or(terminated, done)
 
                 # Perform update at each step
-                loss = agent.update_policy(args.algorithm)
+                loss = agent.update_policy()
+            
+            score_history.append(np.mean(ep_returns))
+            avg_score = np.mean(score_history[-100:])
+
+            if avg_score > best_score:
+                best_score = avg_score
+                if args.save:
+                    dir_path = 'models/ActorCritic'
+                    save(agent.policy, agent.critic, dir_path)
+
 
             # Optional rendering
             if args.render:
@@ -216,14 +252,20 @@ def main() -> None:
                 print(f"[Episode {episode+1}] mean_return = {ep_returns.mean():.2f} loss = {loss:.4f} elapsed = {elapsed:.1f}s")
                 start_time = time.time()
 
-        # Save policy weights after training
-        model_path = f"model_AC_{args.domain}.pth"
-        torch.save(agent.policy.state_dict(), model_path)
-        model_critic = f"model_AC_{args.domain}_critic.pth"
-        torch.save(agent.critic.state_dict(), model_critic)
+        # salva i pesi a fine training
+        if args.save:
+            dir_path = 'models/ActorCritic'
+            os.makedirs(dir_path, exist_ok=True)
+            counter = len(os.listdir(dir_path)) + 1
+            model_file = f"policy_{args.domain}_run_{counter}.mdl"
+            path = os.path.join([dir_path, model_file])
+            torch.save(agent.policy.state_dict(), path)
+            # salva il critic (se presente)
+            model_critic = f"critic_{args.domain}_run_{counter}.mdl"
+            path = os.path.join([dir_path, model_critic])
+            torch.save(agent.critic.state_dict(), path)
 
-        if args.WandDB:
-            wandb.save(model_path)
+
         env.close()
 
         # Print final average return across all parallel envs

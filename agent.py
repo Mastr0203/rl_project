@@ -120,12 +120,14 @@ class Policy(torch.nn.Module):
 #   se lasciato None, si userà solo REINFORCE
 # - device='cpu': device su cui eseguire i calcoli PyTorch, può essere "cpu" oppure "cuda"
 class Agent(object):
-    def __init__(self, policy: Policy, max_action, critic: Critic | None = None, device: str = 'cpu',
+    def __init__(self, model, policy: Policy, max_action, critic: Critic | None = None, device: str = 'cpu',
         gamma: float = 0.99, # tuned
         lr_policy: float = 5e-4,  # tuned
         lr_critic: float = 5e-4,
-        baseline: float = 0
+        baseline: float = 0,
+        AC_critic: str = 'Q'
     ):
+        self.model = model
         self.train_device = device
         self.policy = policy.to(self.train_device)  # Questo garantisce che i forward e backward
                                                     # avvengano tutti sullo stesso hardware
@@ -136,6 +138,7 @@ class Agent(object):
         self.optimizer_critic = (torch.optim.Adam(self.critic.parameters(), lr=lr_critic)
                                  if self.critic is not None else None)  # Se esiste un critic, ne crea un
                                                                         # ottimizzatore Adam analogo
+        self.AC_critic = AC_critic
         
         # Buffer per raccogliere, passo dopo passo, all’interno di un episodio:
         self.gamma = gamma
@@ -204,7 +207,7 @@ class Agent(object):
     # raccoglie i dati accumulati durante gli step, li trasforma in batch, azzera i buffer e quindi,
     # in base all’algoritmo scelto, calcola le loss e aggiorna i parametri di policy e, se presente,
     # di critic
-    def update_policy(self, model):
+    def update_policy(self):
         log_probs = torch.stack(self.action_log_probs).to(self.train_device).squeeze(-1)
         states = torch.stack(self.states).to(self.train_device)
         next_states = torch.stack(self.next_states).to(self.train_device)
@@ -220,7 +223,7 @@ class Agent(object):
         self.action_log_probs, self.rewards, self.done = [], [], []
 
         # ---------------- REINFORCE ---------------- #
-        if model == "REINFORCE":
+        if self.model == "REINFORCE":
             pred_baseline = get_baseline(rewards, baseline_value=self.baseline, states=states, critic=self.critic)
 
             disc_returns = discount_rewards(rewards, self.gamma) # restituisce un tensore (rewards, ) contenente la somma cumulata dei reward scontati di gamma^t
@@ -239,31 +242,31 @@ class Agent(object):
             return actor_loss
 
         # --------------- ACTOR‑CRITIC -------------- #
-        elif model == "ActorCritic":
+        elif self.model == "ActorCritic":
             # --- 1) Critic update (prima) -----------
             with torch.no_grad():  # disabilita il tracciamento dei gradienti perché non vogliamo aggiornare
                                    # né la policy né il critic usando il termine futuro come nodo di back-prop
                 # porta rewards e done a shape [T,1] così da farli combaciare con critic output
                 r_col = rewards.unsqueeze(-1)      # [T] -> [T,1]
                 done_col = done.unsqueeze(-1)      # [T] -> [T,1]
-                next_act = self.policy(next_states).mean
+                next_act = self.policy(next_states).mean if self.AC_critic == 'Q' else None
                 # qui viene chiamata critic.forward con self.critic() per calcolare il target:
-                target_q = r_col + self.gamma * \
+                target = r_col + self.gamma * \
                            self.critic(next_states, next_act) * (1 - done_col)
                 # Il fattore (1 - done) assicura che, se l’episodio è terminato, non si faccia bootstrapping oltre
 
-            current_act = self.policy(states).mean.detach()    # grad OFF verso policy
-            q_vals = self.critic(states, current_act)  # qui viene chiamata critic.forward con self.critic()
+            current_act = self.policy(states).mean.detach() if self.AC_critic == 'Q' else None   # grad OFF verso policy
+            critic_vals = self.critic(states, current_act)  # qui viene chiamata critic.forward con self.critic()
                                                        # per ottenere la stima corrente da confrontare col target
 
-            critic_loss = F.mse_loss(q_vals, target_q)
+            critic_loss = F.mse_loss(critic_vals, target)
 
             self.optimizer_critic.zero_grad()
             critic_loss.backward()
             self.optimizer_critic.step()
 
             # --- 2) Actor update (dopo) --------------
-            advantages = (target_q - q_vals).detach()
+            advantages = (target - critic_vals).detach()
             actor_loss = -(log_probs * advantages).sum()
 
             self.optimizer.zero_grad()
@@ -273,4 +276,4 @@ class Agent(object):
             return actor_loss + critic_loss
 
         else:
-            raise ValueError(f"Unknown algorithm '{model}'")
+            raise ValueError(f"Unknown algorithm '{self.model}'")

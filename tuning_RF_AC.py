@@ -18,7 +18,8 @@ gammas = [0.95, 0.99, 0.995]
 hiddens = [32, 64, 128]
 lrs_policy = [1e-4, 5e-4, 1e-3]
 lrs_critic = [1e-4, 5e-4, 1e-3]
-baselines = [0.0, 20.0, 'dynamic']
+baselines = [0.0] # insert only a single value if you're using ActorCritic
+AC_critic = ['V'] # insert only a single value if you're using REINFORCE
 
 # Numero di episodi per run (puoi abbassarlo in fase di test)
 N_EPISODES = 10000
@@ -79,8 +80,12 @@ def run_with_live_output(args):
 # --- Save tuning results ---
 # Create the output directory if it doesn't exist
 os.makedirs("tuning_results", exist_ok=True)
+
+csv_path = f"tuning_results/summary_{ALG}.csv"
+file_exists = os.path.isfile(csv_path)
+
 # Open a new CSV file for this algorithm's summary (overwrite if exists)
-with open(f"tuning_results/summary_{ALG}.csv", "w", newline="") as fout:
+with open(csv_path, "a", newline="") as fout:
     # Determine CSV columns: include baseline column only when using a dynamic baseline
     if ALG == "REINFORCE":
         fieldnames = [
@@ -88,18 +93,20 @@ with open(f"tuning_results/summary_{ALG}.csv", "w", newline="") as fout:
             ]
     else:
         fieldnames = [
-            "gamma", "hidden", "lr_policy", "lr_critic", "final_return", "elapsed_time"
+            "critic", "gamma", "hidden", "lr_policy", "lr_critic", "final_return", "elapsed_time"
             ]
     # Initialize CSV writer with the selected columns
     writer = csv.DictWriter(fout, fieldnames=fieldnames)
-    # Write the header row to the CSV file
-    writer.writeheader()
+
+    # Write the header only if the file is new or empty
+    if not file_exists or os.path.getsize(csv_path) == 0:
+        writer.writeheader()
 
     # Iterate over every combination of discount factor, hidden layer size, and learning rates to evaluate agent performance
-    for gamma, hidden, lr_policy, lr_critic, baseline in itertools.product(gammas, hiddens, lrs_policy, lrs_critic, baselines):
+    for AC_critic, gamma, hidden, lr_policy, lr_critic, baseline in itertools.product(AC_critic, gammas, hiddens, lrs_policy, lrs_critic, baselines):
 
         # Log the current hyperparameter configuration to console
-        print(f"[γ={gamma:.3f}, h={hidden}, lr_policy={lr_policy:.1e}, lr_critic={lr_critic:.1e}, baseline={baseline}]")
+        print(f"[γ={gamma:.3f}, h={hidden}, lr_policy={lr_policy:.1e}, lr_critic={lr_critic:.1e}, baseline={baseline}, AC_critic={AC_critic}]")
 
         # Construct a dictionary of command-line flags and values for this trial
         args_dict = {
@@ -111,7 +118,8 @@ with open(f"tuning_results/summary_{ALG}.csv", "w", newline="") as fout:
             '--gamma': gamma,
             '--lr-policy': lr_policy,
             '--lr-critic': lr_critic,
-            '--hidden': hidden
+            '--hidden': hidden,
+            '--AC-critic': AC_critic
         }
 
         # Generate the complete argument list to launch train.py with the specified parameters
@@ -138,7 +146,9 @@ with open(f"tuning_results/summary_{ALG}.csv", "w", newline="") as fout:
             "elapsed_time": elapsed_time
         }
         else:
-            row = {"gamma": gamma,
+            row = {
+            "critic": AC_critic,
+            "gamma": gamma,
             "hidden": hidden,
             "lr_policy": lr_policy,
             "lr_critic": lr_critic,
